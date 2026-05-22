@@ -4,61 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Architecture Viewer Beta</title>
-    <!-- Tailwind CSS Production CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = { darkMode: 'class' }
-    </script>
-    <!-- Three.js 라이브러리 및 로더 CDN -->
+    <script>tailwind.config = { darkMode: 'class' }</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
-    <!-- 모델 제어(Move, Rotate, Scale)를 위한 TransformControls 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
-    <!-- WebXR VR Button -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js"></script>
-    <!-- Phosphor Icons (UI 아이콘용) -->
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; user-select: none; font-family: 'Inter', sans-serif; -webkit-touch-callout: none; touch-action: none; background-color: #87CEEB; }
         canvas { display: block; outline: none; }
-        
-        /* 커스텀 스크롤바 */
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
         .dark ::-webkit-scrollbar-thumb { background: #3e4247; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .dark ::-webkit-scrollbar-thumb:hover { background: #55595f; }
-
-        /* 글래스 패널 */
         .glass-panel { background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(12px); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .dark .glass-panel { background: rgba(18, 19, 22, 0.95); box-shadow: none; }
-        
         .btn-tool { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 4px; color: #64748b; cursor: pointer; transition: all 0.2s; }
         .dark .btn-tool { color: #a0a5ab; }
         .btn-tool:hover { background: rgba(0, 0, 0, 0.05); color: #0f172a; }
         .dark .btn-tool:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
         .btn-tool.active { background: rgba(16, 185, 129, 0.15); color: #059669; }
         .dark .btn-tool.active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
-
         input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 14px; width: 14px; border-radius: 50%; background: #94a3b8; cursor: pointer; margin-top: -5px; }
         .dark input[type=range]::-webkit-slider-thumb { background: #a0a5ab; }
         input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 4px; cursor: pointer; background: #e2e8f0; border-radius: 2px; }
         .dark input[type=range]::-webkit-slider-runnable-track { background: #2c2e33; }
-
-        /* 가상 조이스틱 */
         #joy-base { position: absolute; width: 100px; height: 100px; border: 2px solid rgba(0,0,0,0.1); border-radius: 50%; background: rgba(0,0,0,0.05); transform: translate(-50%, -50%); display: none; z-index: 20; pointer-events: none; }
         .dark #joy-base { border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); }
         #joy-stick { position: absolute; width: 40px; height: 40px; background: rgba(16, 185, 129, 0.6); border-radius: 50%; transform: translate(-50%, -50%); display: none; z-index: 21; pointer-events: none; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
-
-        /* 미니맵 보더 테두리 */
         #minimap-border { position: absolute; left: 16px; bottom: 48px; width: 150px; height: 150px; border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; pointer-events: none; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.2); overflow: hidden; }
         .dark #minimap-border { border-color: rgba(0,0,0,0.5); }
         
-        /* 다이내믹 레이어 리스트 버튼 스타일 */
         .layer-btn { opacity: 0.5; transition: opacity 0.2s; cursor: pointer; }
         .layer-btn:hover { opacity: 1.0; }
         .layer-btn.active { opacity: 1.0; color: #10b981; }
@@ -93,7 +75,6 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <!-- 다국어 선택기 -->
             <select id="lang-selector" class="bg-gray-100 dark:bg-[#2c2e33] border border-gray-300 dark:border-[#3e4247] rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 text-[10px] outline-none cursor-pointer hidden md:block">
                 <option value="ko">KR</option>
                 <option value="en">EN</option>
@@ -136,7 +117,6 @@
                 <div class="flex items-center gap-2 text-[12px] md:text-[11px]"><i class="ph-fill ph-buildings text-emerald-600 dark:text-emerald-500 text-base md:text-sm"></i> Model Hierarchy</div>
             </div>
             
-            <!-- 동적 레이어 리스트 렌더링 컨테이너 -->
             <div id="dynamic-layer-list" class="pl-2 flex flex-col gap-1 mt-1 border-l border-gray-300 dark:border-[#3e4247] ml-2">
                 <div class="text-gray-400 dark:text-gray-500 p-2 italic" data-i18n="noModel">모델을 업로드하면 레이어가 표시됩니다.</div>
             </div>
@@ -186,50 +166,50 @@
                     <span data-i18n="camOptics">Camera & Optics</span>
                 </div>
                 <div class="grid grid-cols-2 gap-2 bg-gray-50 dark:bg-[#141518] p-1.5 rounded border border-gray-200 dark:border-[#26282b]">
-                    <button id="btn-view-fps" class="py-2 md:py-1.5 bg-emerald-100 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/50 rounded flex items-center justify-center gap-1.5 transition-colors text-[12px] md:text-[11px] font-medium">
+                    <button id="btn-view-fps" class="py-2 md:py-1.5 hover:bg-gray-200 dark:hover:bg-[#2c2e33] text-gray-600 dark:text-[#a0a5ab] border border-transparent rounded flex items-center justify-center gap-1.5 transition-colors text-[12px] md:text-[11px] font-medium">
                         <i class="ph-fill ph-person-simple-walk"></i> <span data-i18n="fps">1st Person</span>
                     </button>
-                    <button id="btn-view-tps" class="py-2 md:py-1.5 hover:bg-gray-200 dark:hover:bg-[#2c2e33] text-gray-600 dark:text-[#a0a5ab] border border-transparent rounded flex items-center justify-center gap-1.5 transition-colors text-[12px] md:text-[11px] font-medium">
+                    <!-- ★ 3인칭 기본 액티브 상태 세팅 ★ -->
+                    <button id="btn-view-tps" class="py-2 md:py-1.5 bg-emerald-100 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/50 rounded flex items-center justify-center gap-1.5 transition-colors text-[12px] md:text-[11px] font-medium">
                         <i class="ph-fill ph-video-camera"></i> <span data-i18n="tps">3rd Person</span>
                     </button>
                 </div>
                 
                 <div class="flex items-center justify-between mt-2">
                     <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px] w-16" data-i18n="lens">Lens (mm)</label>
-                    <input type="range" id="slider-focal" min="8" max="150" step="1" value="35" class="flex-1 mx-2">
-                    <span id="lbl-focal" class="w-12 text-right font-mono text-gray-600 dark:text-[#a0a5ab] text-[12px] md:text-[11px]">35mm</span>
+                    <!-- ★ 렌즈범위 5mm ~ 50mm, 초광각 10mm 기본 ★ -->
+                    <input type="range" id="slider-focal" min="5" max="50" step="1" value="10" class="flex-1 mx-2">
+                    <span id="lbl-focal" class="w-12 text-right font-mono text-gray-600 dark:text-[#a0a5ab] text-[12px] md:text-[11px]">10mm</span>
                 </div>
                 <div class="flex items-center justify-between mt-1">
                     <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px] w-16" data-i18n="speed">Speed</label>
-                    <input type="range" id="slider-cam-speed" min="500" max="25000" step="100" value="4000" class="flex-1 mx-2">
+                    <input type="range" id="slider-cam-speed" min="0.5" max="25" step="0.5" value="4" class="flex-1 mx-2">
                     <span id="lbl-speed" class="w-12 text-right font-mono text-gray-600 dark:text-[#a0a5ab] text-[12px] md:text-[11px]">4.0m/s</span>
                 </div>
             </div>
 
             <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
 
-            <!-- 단면 컷 (Clipping Planes) -->
             <div class="flex flex-col gap-2">
                 <div class="flex justify-between items-center text-gray-800 dark:text-gray-200 font-semibold text-[12px] md:text-[11px]">
                     <span data-i18n="sectionCut">Section / Plan Cut</span>
                 </div>
                 <div class="flex items-center justify-between">
                     <label class="text-red-500 w-16 text-[12px] md:text-[11px]">X-Axis</label>
-                    <input type="range" id="clip-x" min="-100000" max="100000" step="100" value="100000" class="flex-1 mx-2 accent-red-500">
+                    <input type="range" id="clip-x" min="-100" max="100" step="0.5" value="100" class="flex-1 mx-2 accent-red-500">
                 </div>
                 <div class="flex items-center justify-between">
                     <label class="text-green-500 w-16 text-[12px] md:text-[11px]">Y-Axis</label>
-                    <input type="range" id="clip-y" min="-10000" max="100000" step="100" value="100000" class="flex-1 mx-2 accent-green-500">
+                    <input type="range" id="clip-y" min="-10" max="100" step="0.5" value="100" class="flex-1 mx-2 accent-green-500">
                 </div>
                 <div class="flex items-center justify-between">
                     <label class="text-blue-500 w-16 text-[12px] md:text-[11px]">Z-Axis</label>
-                    <input type="range" id="clip-z" min="-100000" max="100000" step="100" value="100000" class="flex-1 mx-2 accent-blue-500">
+                    <input type="range" id="clip-z" min="-100" max="100" step="0.5" value="100" class="flex-1 mx-2 accent-blue-500">
                 </div>
             </div>
 
             <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
 
-            <!-- 대기 및 렌더링 -->
             <div class="flex flex-col gap-2">
                 <div class="flex justify-between items-center text-gray-800 dark:text-gray-200 font-semibold text-[12px] md:text-[11px]">
                     <span data-i18n="atmosphere">Atmosphere</span>
@@ -253,7 +233,6 @@
 
             <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
 
-            <!-- 생체 텔레메트리 -->
             <div class="flex flex-col gap-3">
                 <div class="flex justify-between items-center">
                     <span class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 text-[12px] md:text-[11px]"><i class="ph-fill ph-heartbeat"></i> <span data-i18n="biometrics">Live Biometrics</span></span>
@@ -307,7 +286,6 @@
                 </div>
             </div>
 
-            <!-- 데이터 내보내기/이메일 버튼 그룹 -->
             <div class="grid grid-cols-2 gap-2 mt-auto pt-2">
                 <button id="btn-export-csv" class="py-2.5 bg-white dark:bg-[#202124] border border-gray-300 dark:border-[#3e4247] text-gray-700 dark:text-gray-200 rounded flex flex-col items-center gap-1 hover:bg-gray-50 dark:hover:bg-[#2c2e33] transition-colors shadow-sm dark:shadow-none">
                     <i class="ph ph-file-csv text-lg text-blue-500 dark:text-blue-400"></i>
@@ -318,7 +296,6 @@
                     <span class="text-[9px] font-medium" data-i18n="saveGltf">Save GLTF</span>
                 </button>
             </div>
-            <!-- 이메일 다이렉트 전송 버튼 추가 -->
             <button id="btn-email-data" class="mt-2 w-full py-2 bg-indigo-50 dark:bg-indigo-600/20 border border-indigo-200 dark:border-indigo-700/50 text-indigo-700 dark:text-indigo-400 rounded flex items-center justify-center gap-2 hover:bg-indigo-100 dark:hover:bg-indigo-600/40 transition-colors shadow-sm dark:shadow-none">
                 <i class="ph ph-envelope-simple text-lg"></i>
                 <span class="text-[10px] font-medium" data-i18n="emailData">Email Data (kris@kil.kr)</span>
@@ -326,7 +303,6 @@
         </div>
     </aside>
 
-    <!-- 하단 상태 표시줄 -->
     <footer id="bottom-bar" class="absolute bottom-0 left-0 right-0 h-[32px] bg-white dark:bg-[#141518] border-t border-gray-200 dark:border-[#26282b] z-50 flex items-center justify-between px-3 md:px-4 text-gray-500 dark:text-[#8e9297] text-[10px] font-mono transition-colors">
         <div class="flex items-center gap-2 md:gap-4">
             <div class="text-emerald-600 dark:text-emerald-500 flex items-center gap-1.5 font-medium">
@@ -336,11 +312,12 @@
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247]"></div>
             <div class="flex items-center gap-1 font-medium">
                 <span class="text-gray-500 dark:text-gray-400 hidden sm:inline">Unit:</span>
+                <!-- ★ 미터법(M) 기반으로 네이티브 단위 조정 완료 ★ -->
                 <select id="select-model-unit" class="bg-gray-100 dark:bg-[#2c2e33] border border-gray-300 dark:border-[#3e4247] rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 text-[10px] outline-none cursor-pointer">
-                    <option value="1">MM (Native)</option>
-                    <option value="10">CM</option>
-                    <option value="1000">Meters (M)</option>
-                    <option value="304.8">Feet (FT)</option>
+                    <option value="1" selected>Meters (M) - Native</option>
+                    <option value="0.001">Millimeters (MM)</option>
+                    <option value="0.01">Centimeters (CM)</option>
+                    <option value="0.3048">Feet (FT)</option>
                 </select>
             </div>
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247]"></div>
@@ -349,7 +326,7 @@
                 <span id="txt-gaze-count">0 Pts</span>
             </div>
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247] hidden md:block"></div>
-            <div class="hidden md:block font-medium"><span id="txt-nav-mode" class="text-gray-600 dark:text-gray-300 uppercase">FPS / FLY</span></div>
+            <div class="hidden md:block font-medium"><span id="txt-nav-mode" class="text-gray-600 dark:text-gray-300 uppercase">TPS / FLY</span></div>
         </div>
 
         <div class="flex items-center gap-2 md:gap-4">
@@ -359,7 +336,7 @@
                 <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300 ml-1">H</span>=Hide UI
             </div>
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247] hidden xl:block"></div>
-            <div class="hidden sm:block w-36 font-medium">POS: <span id="txt-pos" class="text-gray-700 dark:text-gray-300">0.0, 1750.0, 0.0</span></div>
+            <div class="hidden sm:block w-36 font-medium">POS: <span id="txt-pos" class="text-gray-700 dark:text-gray-300">0.0, 1.75, 0.0</span></div>
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247] hidden sm:block"></div>
             <div class="w-10 text-right font-medium">FPS: <span id="txt-fps" class="text-emerald-600 dark:text-emerald-400 font-bold">60</span></div>
         </div>
@@ -367,7 +344,6 @@
 
     <!-- 자바스크립트 엔진 -->
     <script>
-        // 다국어 딕셔너리
         const i18n = {
             ko: { title: "Architecture Viewer Beta", hideUI: "UI 숨기기 (H)", showUI: "UI 복원 (H)", sceneList: "Scene List", noModel: "모델을 업로드하면 레이어가 표시됩니다.", showMinimap: "Show UI Minimap", gazeLayer: "Gaze Heatmap Layer", avatarLayer: "Character Avatar", loadModel: "Load Design Model", resetScene: "Reset Organic Pavilion", inspector: "Inspector", camOptics: "Camera & Optics", fps: "1st Person", tps: "3rd Person", lens: "Lens (mm)", speed: "Speed", sectionCut: "Section / Plan Cut", atmosphere: "Atmosphere", time: "Sun Time", cloud: "Cloudiness", modelLights: "Model Lights", biometrics: "Live Biometrics", hr: "Heart Rate", stress: "Stress Index", saveCsv: "Save CSV", saveGltf: "Save GLTF", emailData: "Email Data (kris@kil.kr)", walkFly: "걷기/날기" },
             en: { title: "Architecture Viewer Beta", hideUI: "Hide UI (H)", showUI: "Show UI (H)", sceneList: "Scene Layers", noModel: "Layers will appear when model is loaded.", showMinimap: "Show Minimap", gazeLayer: "Gaze Heatmap Layer", avatarLayer: "Character Avatar", loadModel: "Import GLB Model", resetScene: "Reset Pavilion", inspector: "Properties", camOptics: "Camera & Optics", fps: "1st Person", tps: "3rd Person", lens: "Focal (mm)", speed: "Move Speed", sectionCut: "Clipping Planes", atmosphere: "Environment", time: "Sun Time", cloud: "Cloud Cover", modelLights: "Emissive Lights", biometrics: "Live Biometrics", hr: "Heart Rate", stress: "Stress Level", saveCsv: "Save CSV", saveGltf: "Save GLTF", emailData: "Email Data (kris@kil.kr)", walkFly: "Walk/Fly" },
@@ -381,7 +357,6 @@
             });
         }
 
-        // 전역 변수 설정
         let scene, camera, renderer, clock, container;
         let ambientLight, dirLight, hemiLight;
         let groundMesh, structures = [], furniture = [], modelEmissives = [];
@@ -390,15 +365,15 @@
         let isLeftMouseDown = false, isMiddleMouseDown = false;
         let mouseX = 0, mouseY = 0;
         
-        // ★ 부드러운 이동(Lerp/Momentum)을 위한 타겟 변수 선언 ★
         let targetYaw = 0, targetPitch = 0;
         let cameraYaw = 0, cameraPitch = 0;
         let currentVelocity = new THREE.Vector3();
         let targetVelocity = new THREE.Vector3();
-        let moveSpeed = 4000; 
+        let moveSpeed = 4.0; // ★ 미터 스케일에 맞게 속도 조정 (4.0m/s) ★
         const keysPressed = { w: false, a: false, s: false, d: false, q: false, e: false, shift: false };
         
-        let viewMode = 'fps'; let movementMode = 'fly'; 
+        // ★ 3인칭 기본, 원점 스폰 설정 완료 ★
+        let viewMode = 'tps'; let movementMode = 'fly'; 
         let avatarGroup; let mixer, idleAction, walkAction, runAction, currentAction;
         let baseBPM = 66, currentBPM = 66, baseGSR = 2.1, currentGSR = 2.1;
         let stressIndex = 25, sensitivity = 'normal';
@@ -415,10 +390,11 @@
         
         let minimapCamera, showMinimap = true;
 
+        // ★ 미터 단위에 맞게 클리핑 플레인 거리 조정 ★
         let clipPlanes = [
-            new THREE.Plane(new THREE.Vector3(-1, 0, 0), 100000),
-            new THREE.Plane(new THREE.Vector3(0, -1, 0), 100000),
-            new THREE.Plane(new THREE.Vector3(0, 0, -1), 100000)
+            new THREE.Plane(new THREE.Vector3(-1, 0, 0), 100),
+            new THREE.Plane(new THREE.Vector3(0, -1, 0), 100),
+            new THREE.Plane(new THREE.Vector3(0, 0, -1), 100)
         ];
         
         function getJoyBase() { return document.getElementById('joy-base'); }
@@ -444,9 +420,11 @@
             clock = new THREE.Clock();
             scene = new THREE.Scene();
 
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 100, 500000);
-            camera.position.set(0, 5000, 12000);
-            camera.setFocalLength(35); 
+            // ★ M(미터) 네이티브 카메라로 파라미터 전부 수정 ★
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
+            camera.position.set(0, 5, 12);
+            // 기본 광각 10mm로 세팅
+            camera.setFocalLength(10); 
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -458,13 +436,12 @@
             renderer.localClippingEnabled = true; 
             container.appendChild(renderer.domElement);
 
-            minimapCamera = new THREE.OrthographicCamera(-15000, 15000, 15000, -15000, 100, 500000);
-            minimapCamera.position.set(0, 50000, 0);
+            minimapCamera = new THREE.OrthographicCamera(-15, 15, 15, -15, 0.1, 5000);
+            minimapCamera.position.set(0, 50, 0);
             minimapCamera.lookAt(0, 0, 0);
 
             renderer.xr.enabled = true;
             
-            // ★ VRButton 안정화 예외 처리 적용 ★
             if (typeof VRButton !== 'undefined') {
                 const vrBtn = VRButton.createButton(renderer);
                 vrBtn.style.bottom = '40px'; 
@@ -481,21 +458,22 @@
             scene.add(hemiLight);
 
             dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-            dirLight.position.set(0, 40000, 20000);
+            dirLight.position.set(20, 40, 20);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048; dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.near = 100; dirLight.shadow.camera.far = 300000;
-            const d = 50000; dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d; dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
+            dirLight.shadow.camera.near = 0.5; dirLight.shadow.camera.far = 300;
+            const d = 50; dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d; dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
             dirLight.shadow.bias = -0.0005;
             scene.add(dirLight);
 
-            const sunGeo = new THREE.SphereGeometry(2000, 32, 32);
+            const sunGeo = new THREE.SphereGeometry(2, 32, 32);
             const sunMat = new THREE.MeshBasicMaterial({color: 0xffffee});
             const sunMesh = new THREE.Mesh(sunGeo, sunMat);
             dirLight.add(sunMesh); 
 
+            // 500m 짜리 미터법 대지
             const groundMat = new THREE.MeshStandardMaterial({ color: 0x86b36e, roughness: 0.8, clippingPlanes: clipPlanes });
-            groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(500000, 500000), groundMat);
+            groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), groundMat);
             groundMesh.rotation.x = -Math.PI / 2; groundMesh.receiveShadow = true;
             scene.add(groundMesh);
 
@@ -510,6 +488,7 @@
             });
             scene.add(transformControl);
 
+            // ★ 캐릭터 그룹 원점 (0,0,0) 세팅 ★
             avatarGroup = new THREE.Group();
             avatarGroup.position.set(0, 0, 0); 
             scene.add(avatarGroup);
@@ -518,8 +497,8 @@
             loadAvatarModel(); 
             buildGazePointCloud();
 
-            raycasterDown = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 50000);
-            raycasterHoriz = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0, 20000);
+            raycasterDown = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 50);
+            raycasterHoriz = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0, 20);
 
             initEcgChart();
             registerInputEvents();
@@ -529,9 +508,8 @@
             window.addEventListener('resize', onWindowResize);
             
             updateThemeVisuals(); 
-            switchViewMode('fps');
+            switchViewMode('tps'); // 기본 TPS
             
-            setTimeout(resetView, 800); 
             notify("System Ready. VR & Teleport Enabled.", "success");
 
             renderer.setAnimationLoop(animate);
@@ -542,12 +520,12 @@
             const sCloud = document.getElementById('slider-cloud');
             const cloudFactor = sCloud ? parseFloat(sCloud.value) : 0;
             
-            const baseColor = isDark ? new THREE.Color(0x0a0a0c) : new THREE.Color(0x87CEEB); // SkyBlue
+            const baseColor = isDark ? new THREE.Color(0x0a0a0c) : new THREE.Color(0x87CEEB); 
             const cloudColor = isDark ? new THREE.Color(0x1a1a1c) : new THREE.Color(0xa0aab5);
             const finalColor = baseColor.clone().lerp(cloudColor, cloudFactor);
             
             scene.background = finalColor;
-            if(!scene.fog) scene.fog = new THREE.FogExp2(finalColor, 0.000015);
+            if(!scene.fog) scene.fog = new THREE.FogExp2(finalColor, 0.015);
             else scene.fog.color.copy(finalColor);
 
             if(dirLight) dirLight.intensity = 1.2 * (1.0 - cloudFactor * 0.7);
@@ -578,8 +556,8 @@
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
             
-            const optimalDist = maxDim * 0.8 || 10000;
-            camera.far = Math.max(200000, maxDim * 5);
+            const optimalDist = maxDim * 0.8 || 10;
+            camera.far = Math.max(200, maxDim * 5);
             camera.updateProjectionMatrix();
 
             const optimalFogDensity = 1.0 / (camera.far * 0.6);
@@ -596,13 +574,12 @@
                 
                 const targetRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(cameraPitch, cameraYaw, 0, 'YXZ'));
                 camera.quaternion.copy(targetRot);
-                if (viewMode === 'fps') camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1750, avatarGroup.position.z);
-                else camera.position.copy(avatarGroup.position.clone().add(new THREE.Vector3(0, 2000, 4000).applyQuaternion(targetRot)));
+                if (viewMode === 'fps') camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1.75, avatarGroup.position.z);
+                else camera.position.copy(avatarGroup.position.clone().add(new THREE.Vector3(0, 2.0, 4.0).applyQuaternion(targetRot)));
             }
             notify("View Restored and Framed.", "success");
         }
 
-        // CAD 레이어 (씬 트리) UI 생성 함수
         function updateSceneLayerUI(rootGroup) {
             const listContainer = document.getElementById('dynamic-layer-list');
             if(!listContainer) return;
@@ -613,7 +590,6 @@
                 return;
             }
 
-            // 하위 Mesh 혹은 최상위 Group들 식별
             const nodes = [];
             rootGroup.children.forEach(child => {
                 if(child.isMesh || child.isGroup) nodes.push(child);
@@ -630,7 +606,6 @@
                 const tools = document.createElement('div');
                 tools.className = "flex gap-1";
 
-                // 가시성 토글
                 const btnVis = document.createElement('i');
                 btnVis.className = `ph-fill ph-eye layer-btn ${node.visible ? 'active' : ''}`;
                 btnVis.title = "Hide/Show";
@@ -640,7 +615,6 @@
                     btnVis.className = `ph-fill ${node.visible ? 'ph-eye active' : 'ph-eye-slash text-gray-400'} layer-btn`;
                 };
 
-                // 잠금 토글 (선택불가)
                 const btnLock = document.createElement('i');
                 btnLock.className = `ph-fill ${node.userData.locked ? 'ph-lock-key locked' : 'ph-lock-key-open text-gray-400'} layer-btn`;
                 btnLock.title = "Lock (Prevent Edit)";
@@ -651,7 +625,6 @@
                     if(node.userData.locked && transformControl.object === node) transformControl.detach();
                 };
 
-                // 독립 보기 (Isolate)
                 const btnIso = document.createElement('i');
                 btnIso.className = "ph-fill ph-star layer-btn text-amber-500 opacity-50";
                 btnIso.title = "Isolate";
@@ -667,7 +640,7 @@
                             n.userData.isolated = isIsolating;
                         }
                     });
-                    updateSceneLayerUI(rootGroup); // 리렌더
+                    updateSceneLayerUI(rootGroup); 
                 };
 
                 tools.appendChild(btnVis);
@@ -677,7 +650,6 @@
                 row.appendChild(nameSpan);
                 row.appendChild(tools);
                 
-                // 클릭 시 해당 노드를 Transform 선택
                 row.onclick = () => {
                     if(!node.userData.locked) {
                         setTransformMode('translate', document.getElementById('btn-tool-move'));
@@ -689,31 +661,32 @@
             });
         }
 
+        // 미터 스케일 파빌리온
         function buildOrganicPavilionScene() {
             activeModelGroup = new THREE.Group();
             scene.add(activeModelGroup);
 
-            const roofGeo = new THREE.PlaneGeometry(28000, 20000, 64, 64);
+            const roofGeo = new THREE.PlaneGeometry(28, 20, 64, 64);
             const pos = roofGeo.attributes.position;
             for(let i=0; i<pos.count; i++) {
                 const x = pos.getX(i); const y = pos.getY(i);
-                let z = Math.sin(x * 0.0004) * 2000.0 + Math.cos(y * 0.0004) * 2000.0;
-                z -= (Math.pow(x, 2) + Math.pow(y, 2)) * 0.000000035; pos.setZ(i, z);
+                let z = Math.sin(x * 0.4) * 2.0 + Math.cos(y * 0.4) * 2.0;
+                z -= (Math.pow(x, 2) + Math.pow(y, 2)) * 0.035; pos.setZ(i, z);
             }
             roofGeo.computeVertexNormals();
             
             const roofMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4, metalness: 0.1, side: THREE.DoubleSide, clippingPlanes: clipPlanes });
             const roof = new THREE.Mesh(roofGeo, roofMat);
             roof.name = "Organic Roof";
-            roof.rotation.x = -Math.PI / 2; roof.position.y = 5500; roof.castShadow = true; roof.receiveShadow = true;
+            roof.rotation.x = -Math.PI / 2; roof.position.y = 5.5; roof.castShadow = true; roof.receiveShadow = true;
             activeModelGroup.add(roof); structures.push(roof);
 
             const pillarMat = new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.4, clippingPlanes: clipPlanes });
-            const pillarPositions = [ [-9000, -6000], [9000, -6000], [-9000, 6000], [9000, 6000], [0, 0] ];
+            const pillarPositions = [ [-9, -6], [9, -6], [-9, 6], [9, 6], [0, 0] ];
             pillarPositions.forEach((p, i) => {
-                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1200, 400, 7000, 32), pillarMat);
+                const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.4, 7, 32), pillarMat);
                 pillar.name = `Support Pillar ${i+1}`;
-                pillar.position.set(p[0], 3500, p[1]); pillar.castShadow = true; pillar.receiveShadow = true;
+                pillar.position.set(p[0], 3.5, p[1]); pillar.castShadow = true; pillar.receiveShadow = true;
                 activeModelGroup.add(pillar); structures.push(pillar);
             });
             setTransformMode('view', document.getElementById('btn-tool-view'));
@@ -738,21 +711,21 @@
             new THREE.GLTFLoader().load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb', function(gltf) {
                 const model = gltf.scene;
                 const box = new THREE.Box3().setFromObject(model);
-                const scale = 1800 / (box.max.y - box.min.y);
+                const scale = 1.8 / (box.max.y - box.min.y); // 1.8m
                 model.scale.set(scale, scale, scale); model.rotation.y = Math.PI; 
                 model.traverse(object => { if (object.isMesh) { object.castShadow = true; object.receiveShadow = true; } });
                 model.position.set(0, 0, 0); avatarGroup.add(model);
                 mixer = new THREE.AnimationMixer(model);
                 idleAction = mixer.clipAction(gltf.animations[0]); walkAction = mixer.clipAction(gltf.animations[3]); runAction = mixer.clipAction(gltf.animations[1]);
                 currentAction = idleAction; currentAction.play();
-            }, undefined, e => notify("Soldier avatar failed to load.", "info"));
+            }, undefined, e => notify("Soldier avatar failed to load. Using invisible avatar.", "info"));
         }
 
         function buildGazePointCloud() {
             const geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(15000), 3)); 
             geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(15000), 3));
-            gazePointCloud = new THREE.Points(geo, new THREE.PointsMaterial({ size: 30, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending }));
+            gazePointCloud = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending }));
             scene.add(gazePointCloud);
         }
 
@@ -799,7 +772,7 @@
             if (intersects.length > 0) {
                 const pt = intersects[0].point;
                 // 약간 위로 텔레포트
-                avatarGroup.position.set(pt.x, pt.y + 100, pt.z); 
+                avatarGroup.position.set(pt.x, pt.y + 0.1, pt.z); 
                 notify("Teleported!", "success");
             }
         }
@@ -830,7 +803,7 @@
             window.addEventListener('dblclick', e => { if (e.target.tagName === 'CANVAS' || e.target === container) performTeleport(e.clientX, e.clientY); });
             window.addEventListener('wheel', e => {
                 if (isTransforming) return;
-                const targetVec = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); const zoomFactor = e.deltaY * -10.0;
+                const targetVec = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); const zoomFactor = e.deltaY * -0.01;
                 if (viewMode === 'fps') avatarGroup.position.addScaledVector(targetVec, zoomFactor); else camera.position.addScaledVector(targetVec, zoomFactor);
             }, { passive: true });
 
@@ -962,10 +935,13 @@
             if(cZ) cZ.addEventListener('input', e => clipPlanes[2].constant = parseFloat(e.target.value));
 
             const sTime = document.getElementById('slider-time');
-            if(sTime) sTime.addEventListener('input', e => { const h = parseFloat(e.target.value); const min = Math.floor((h % 1) * 60).toString().padStart(2, '0'); document.getElementById('lbl-time').textContent = `${Math.floor(h)}:${min}`; const angle = (h / 24) * Math.PI * 2 - Math.PI / 2; dirLight.position.set(Math.cos(angle) * 40000, Math.sin(angle) * 40000, 15000); });
+            if(sTime) sTime.addEventListener('input', e => { const h = parseFloat(e.target.value); const min = Math.floor((h % 1) * 60).toString().padStart(2, '0'); document.getElementById('lbl-time').textContent = `${Math.floor(h)}:${min}`; const angle = (h / 24) * Math.PI * 2 - Math.PI / 2; dirLight.position.set(Math.cos(angle) * 40, Math.sin(angle) * 40, 15); });
             
             const sCloud = document.getElementById('slider-cloud'); if(sCloud) sCloud.addEventListener('input', e => { updateThemeVisuals(); });
-            const sCamSpeed = document.getElementById('slider-cam-speed'); if(sCamSpeed) sCamSpeed.addEventListener('input', e => { moveSpeed = parseFloat(e.target.value); document.getElementById('lbl-speed').textContent = (moveSpeed / 1000).toFixed(1) + 'm/s'; });
+            const sCamSpeed = document.getElementById('slider-cam-speed'); if(sCamSpeed) sCamSpeed.addEventListener('input', e => { moveSpeed = parseFloat(e.target.value); document.getElementById('lbl-speed').textContent = moveSpeed.toFixed(1) + 'm/s'; });
+
+            const selSens = document.getElementById('select-sensitivity');
+            if(selSens) selSens.addEventListener('change', e => { sensitivity = e.target.value; });
 
             const sLights = document.getElementById('slider-lights');
             if(sLights) sLights.addEventListener('input', e => {
@@ -1012,7 +988,7 @@
             const btnExpCsv = document.getElementById('btn-export-csv');
             if(btnExpCsv) btnExpCsv.addEventListener('click', () => {
                 if (gazePoints.length === 0) { notify("No Gaze Data to export.", "error"); return; }
-                let csv = "Target_X(mm),Target_Y(mm),Target_Z(mm),Look_Object,Biometric_BPM,Stress_Index,Timestamp\n";
+                let csv = "Target_X(m),Target_Y(m),Target_Z(m),Look_Object,Biometric_BPM,Stress_Index,Timestamp\n";
                 gazePoints.forEach(p => csv += `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)},${p.objName},${p.bpm},${p.stress},${p.time}\n`);
                 const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
                 triggerEmailShare(URL.createObjectURL(blob), true);
@@ -1128,7 +1104,7 @@
                     let accW = 0, wStress = 0;
                     gazePoints.forEach(pt => {
                         const dist = wPos.distanceTo(new THREE.Vector3(pt.x, pt.y, pt.z));
-                        if (dist < 2500) { const weight = Math.pow(1.0 - (dist/2500), 2); accW += weight; wStress += pt.stress * weight; }
+                        if (dist < 2.5) { const weight = Math.pow(1.0 - (dist/2.5), 2); accW += weight; wStress += pt.stress * weight; }
                     });
                     if (accW > 0) {
                         const avg = wStress / accW;
@@ -1153,6 +1129,7 @@
         }
 
         function updateNavigationAndAvatar(delta) {
+            // ★ 카메라 회전에 보간(Lerp) 적용하여 매우 부드러운 관성 회전 달성 ★
             cameraYaw = THREE.MathUtils.lerp(cameraYaw, targetYaw, delta * 15);
             cameraPitch = THREE.MathUtils.lerp(cameraPitch, targetPitch, delta * 15);
 
@@ -1168,6 +1145,7 @@
             if(joyDelta.x !== 0) mDir.addScaledVector(rVec, joyDelta.x);
             if(movementMode === 'fly') { if(keysPressed.e) mDir.y += 1; if(keysPressed.q) mDir.y -= 1; }
 
+            // ★ 속도 벡터에도 관성(Momentum)을 부여하여 미끄러지듯 이동 ★
             if (mDir.lengthSq() > 0) mDir.normalize();
             targetVelocity.copy(mDir).multiplyScalar(actualSpeed * delta);
             currentVelocity.lerp(targetVelocity, delta * 10);
@@ -1177,17 +1155,33 @@
                 avatarGroup.position.add(currentVelocity);
             }
             
-            if (movementMode === 'walk' && avatarGroup) avatarGroup.position.y = THREE.MathUtils.lerp(avatarGroup.position.y, 0, 0.2); 
+            // ★ 계단/경사로 자동 인식 (Stair-Climbing in Walk mode) ★
+            if (movementMode === 'walk' && avatarGroup) {
+                // 발끝에서 약간 높은 위치(1.0m)에서 아래로 레이캐스팅을 쏴 지형 높이를 계산
+                let targetY = 0; // 지면 기본값
+                const origin = new THREE.Vector3(avatarGroup.position.x, avatarGroup.position.y + 1.0, avatarGroup.position.z);
+                raycasterDown.set(origin, new THREE.Vector3(0, -1, 0));
+                
+                // 건물의 바닥, 계단, 지형 등에서 Y 값을 스캔
+                const intersects = raycasterDown.intersectObjects([...structures, groundMesh]);
+                if (intersects.length > 0) {
+                    targetY = intersects[0].point.y;
+                }
+                
+                // 도출된 지형 높이로 아바타를 부드럽게 끌어올리거나 내림 (계단 오르기)
+                avatarGroup.position.y = THREE.MathUtils.lerp(avatarGroup.position.y, targetY, 0.3); 
+            }
+
             if (isMoving && avatarGroup && currentTransformMode === 'view' && (keysPressed.w||keysPressed.a||keysPressed.s||keysPressed.d || joyDelta.x !== 0 || joyDelta.y !== 0)) {
                 avatarGroup.rotation.y = THREE.MathUtils.lerp(avatarGroup.rotation.y, Math.atan2(mDir.x, mDir.z), 0.15);
             }
 
             if (viewMode === 'fps') {
                 camera.quaternion.copy(targetRot); 
-                if(avatarGroup) camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1750, avatarGroup.position.z);
+                if(avatarGroup) camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1.75, avatarGroup.position.z);
             } else {
                 camera.quaternion.copy(targetRot);
-                if(avatarGroup) camera.position.lerp(avatarGroup.position.clone().add(new THREE.Vector3(0, 2000, 4000).applyQuaternion(targetRot)), 0.12); 
+                if(avatarGroup) camera.position.lerp(avatarGroup.position.clone().add(new THREE.Vector3(0, 2.0, 4.0).applyQuaternion(targetRot)), 0.12); 
             }
 
             if (mixer && avatarGroup && viewMode !== 'fps') {
@@ -1216,12 +1210,12 @@
 
         function runSpatialBiometricSensing() {
             if (!avatarGroup) return;
-            const sensorOrigin = new THREE.Vector3(avatarGroup.position.x, avatarGroup.position.y + 900, avatarGroup.position.z);
+            const sensorOrigin = new THREE.Vector3(avatarGroup.position.x, avatarGroup.position.y + 0.9, avatarGroup.position.z);
             raycasterDown.set(sensorOrigin, new THREE.Vector3(0, 1, 0));
             const ceilInt = raycasterDown.intersectObjects(structures);
-            let ceilHeight = ceilInt.length > 0 ? ceilInt[0].distance : 7000; 
+            let ceilHeight = ceilInt.length > 0 ? ceilInt[0].distance : 7.0; 
 
-            let minWall = 15000;
+            let minWall = 15.0;
             [new THREE.Vector3(1,0,0), new THREE.Vector3(-1,0,0), new THREE.Vector3(0,0,1), new THREE.Vector3(0,0,-1)].forEach(dir => {
                 raycasterHoriz.set(sensorOrigin, dir);
                 const ints = raycasterHoriz.intersectObjects(structures);
@@ -1229,7 +1223,7 @@
             });
 
             let stressMod = sensitivity === 'high' ? 1.6 : (sensitivity === 'low' ? 0.5 : 1.0);
-            let isNarrow = (minWall < 1200 || ceilHeight < 2500);
+            let isNarrow = (minWall < 1.2 || ceilHeight < 2.5);
 
             if (isNarrow) {
                 currentBPM = THREE.MathUtils.lerp(currentBPM, 92 + (stressMod * 10), 0.04);
