@@ -9,6 +9,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/webxr/VRButton.js"></script>
@@ -38,19 +39,61 @@
         #joy-base { position: absolute; width: 100px; height: 100px; border: 2px solid rgba(0,0,0,0.1); border-radius: 50%; background: rgba(0,0,0,0.05); transform: translate(-50%, -50%); display: none; z-index: 20; pointer-events: none; }
         .dark #joy-base { border-color: rgba(255,255,255,0.2); background: rgba(0,0,0,0.2); }
         #joy-stick { position: absolute; width: 40px; height: 40px; background: rgba(16, 185, 129, 0.6); border-radius: 50%; transform: translate(-50%, -50%); display: none; z-index: 21; pointer-events: none; box-shadow: 0 0 10px rgba(16,185,129,0.3); }
-        #minimap-border { position: absolute; left: 16px; bottom: 48px; width: 150px; height: 150px; border: 2px solid rgba(255,255,255,0.5); border-radius: 8px; pointer-events: none; z-index: 10; box-shadow: 0 4px 10px rgba(0,0,0,0.2); overflow: hidden; }
-        .dark #minimap-border { border-color: rgba(0,0,0,0.5); }
         
         .layer-btn { opacity: 0.5; transition: opacity 0.2s; cursor: pointer; }
         .layer-btn:hover { opacity: 1.0; }
         .layer-btn.active { opacity: 1.0; color: #10b981; }
         .layer-btn.locked { color: #f43f5e; opacity: 1.0; }
+        
+        /* 플로팅 라벨 */
+        .player-label { position: absolute; padding: 2px 6px; background: rgba(0,0,0,0.6); color: white; border-radius: 4px; font-size: 10px; font-weight: bold; pointer-events: none; transform: translate(-50%, -100%); z-index: 10; white-space: nowrap; }
+
+        /* 멀티플레이어 채팅 UI (드래그 가능하도록 수정) */
+        #chat-container { position: absolute; left: 280px; bottom: 48px; width: 250px; max-height: 220px; display: flex; flex-direction: column; z-index: 50; pointer-events: auto; background: rgba(20, 21, 24, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .drag-handle { width: 100%; height: 16px; background: rgba(0,0,0,0.4); cursor: move; display: flex; align-items: center; justify-content: center; }
+        .drag-handle div { width: 30px; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; }
+        
+        #chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding: 8px; margin-bottom: 4px; min-height: 100px; }
+        .chat-msg { background: rgba(0,0,0,0.5); color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; width: fit-content; max-width: 100%; word-break: break-all; }
+        #chat-input-wrapper { display: flex; border-top: 1px solid rgba(255,255,255,0.1); }
+        #chat-input { flex: 1; background: transparent; color: white; padding: 8px; font-size: 11px; outline: none; border: none; }
+        #chat-send { background: #10b981; color: white; padding: 0 12px; cursor: pointer; border: none; font-weight: bold; transition: background 0.2s; }
+        #chat-send:hover { background: #059669; }
+
+        /* 미니맵 (드래그 가능하도록 수정) */
+        #minimap-border { position: absolute; right: 300px; bottom: 48px; width: 160px; height: 176px; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; pointer-events: auto; z-index: 50; box-shadow: 0 4px 10px rgba(0,0,0,0.3); overflow: hidden; background: rgba(0,0,0,0.4); display: flex; flex-direction: column; }
+        .dark #minimap-border { border-color: rgba(0,0,0,0.5); }
+        #minimap-render-area { flex: 1; pointer-events: none; }
+        
+        @media (max-width: 768px) {
+            #chat-container { left: 16px; bottom: 210px; width: 200px; }
+            #minimap-border { right: 16px; bottom: 210px; }
+        }
     </style>
 </head>
 <body class="bg-gray-50 dark:bg-[#0a0a0c] text-gray-800 dark:text-[#d1d5db] text-[11px] transition-colors duration-300">
 
     <div id="canvas-container" class="absolute inset-0 z-0"></div>
-    <div id="minimap-border"></div>
+    
+    <!-- 미니맵 컨테이너 (드래그 가능) -->
+    <div id="minimap-border">
+        <div class="drag-handle" title="Drag to move"><div class="drag-bar"></div></div>
+        <div id="minimap-render-area"></div>
+    </div>
+
+    <!-- 멀티플레이어 채팅 UI (드래그 가능) -->
+    <div id="chat-container">
+        <div class="drag-handle" title="Drag to move"><div class="drag-bar"></div></div>
+        <div id="chat-messages" class="no-scrollbar"></div>
+        <div id="chat-input-wrapper">
+            <input type="text" id="chat-input" placeholder="Press Enter to chat..." autocomplete="off">
+            <button id="chat-send"><i class="ph-bold ph-paper-plane-right"></i></button>
+        </div>
+    </div>
+    
+    <!-- 다른 플레이어의 이름표 -->
+    <div id="labels-container" class="absolute inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
     <div id="joy-base"></div>
     <div id="joy-stick"></div>
     <input type="file" id="input-glb-upload" accept=".glb,.gltf" class="hidden">
@@ -75,6 +118,7 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <!-- 다국어 선택기 -->
             <select id="lang-selector" class="bg-gray-100 dark:bg-[#2c2e33] border border-gray-300 dark:border-[#3e4247] rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 text-[10px] outline-none cursor-pointer hidden md:block">
                 <option value="ko">KR</option>
                 <option value="en">EN</option>
@@ -82,7 +126,6 @@
             </select>
 
             <div class="flex gap-1 mr-1 md:mr-4">
-                <button id="btn-toggle-walk" class="md:hidden px-3 py-1 bg-gray-100 dark:bg-[#2c2e33] rounded text-[11px] font-medium text-gray-600 dark:text-gray-300" data-i18n="walkFly">걷기/날기</button>
                 <div class="btn-tool hidden md:flex" id="btn-theme-toggle" title="Toggle Theme"><i class="ph ph-moon text-base"></i></div>
             </div>
             <button id="btn-toggle-ui" class="hidden md:flex px-3 py-1 bg-transparent hover:bg-gray-100 dark:hover:bg-[#2c2e33] border border-gray-300 dark:border-[#3e4247] rounded text-[11px] font-medium transition-colors cursor-pointer text-gray-600 dark:text-[#a0a5ab] items-center gap-1">
@@ -96,33 +139,28 @@
         <i class="ph ph-eye"></i> <span data-i18n="showUI">UI 복원 (H)</span>
     </button>
 
+    <!-- 좌우 패널 구조는 동일하게 유지 -->
     <aside id="left-panel" class="absolute left-0 top-[46px] md:top-[42px] bottom-[32px] w-[260px] md:w-[240px] glass-panel border-r border-gray-200 dark:border-[#26282b] flex flex-col z-40 transition-transform duration-300">
         <div id="btn-toggle-left-arrow" class="absolute -right-6 top-1/2 -translate-y-1/2 w-6 h-16 bg-white dark:bg-[#141518] border-y border-r border-gray-200 dark:border-[#26282b] rounded-r flex items-center justify-center cursor-pointer shadow-md text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors z-50">
             <i id="icon-left-arrow" class="ph ph-caret-left text-lg"></i>
         </div>
-
         <div class="px-4 py-3 md:py-2.5 border-b border-gray-200 dark:border-[#26282b] flex justify-between items-center bg-gray-50 dark:bg-[#1a1b1f]/50">
             <span class="font-semibold text-gray-800 dark:text-gray-200 text-[13px] md:text-[11px]" data-i18n="sceneList">Scene List</span>
             <div class="flex gap-2 md:gap-1">
                 <i id="btn-close-left" class="ph ph-x text-gray-600 dark:text-gray-200 md:hidden text-lg cursor-pointer"></i>
             </div>
         </div>
-
         <div class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 relative">
             <div class="group flex items-center justify-between p-2 rounded hover:bg-gray-100 dark:hover:bg-[#2c2e33] text-gray-600 dark:text-[#a0a5ab] transition-colors">
                 <div class="flex items-center gap-2 text-[12px] md:text-[11px]"><i class="ph ph-cube text-base md:text-sm"></i> Ground System</div>
             </div>
-            
             <div class="group flex items-center justify-between p-2 rounded bg-white dark:bg-[#202124] border border-gray-200 dark:border-[#3e4247] text-gray-800 dark:text-gray-200 mt-2 shadow-sm dark:shadow-none">
                 <div class="flex items-center gap-2 text-[12px] md:text-[11px]"><i class="ph-fill ph-buildings text-emerald-600 dark:text-emerald-500 text-base md:text-sm"></i> Model Hierarchy</div>
             </div>
-            
             <div id="dynamic-layer-list" class="pl-2 flex flex-col gap-1 mt-1 border-l border-gray-300 dark:border-[#3e4247] ml-2">
                 <div class="text-gray-400 dark:text-gray-500 p-2 italic" data-i18n="noModel">모델을 업로드하면 레이어가 표시됩니다.</div>
             </div>
-
             <div class="h-px bg-gray-200 dark:bg-[#3e4247] my-2"></div>
-            
             <div class="pl-2 flex flex-col gap-1.5 mt-1">
                 <label class="flex items-center gap-3 p-1.5 hover:bg-gray-100 dark:hover:bg-[#2c2e33] rounded cursor-pointer text-gray-500 dark:text-[#8e9297] hover:text-gray-800 dark:hover:text-gray-200 text-[12px] md:text-[11px] transition-colors">
                     <input type="checkbox" id="chk-layer-minimap" checked class="accent-emerald-500 w-4 h-4 md:w-3 md:h-3">
@@ -138,12 +176,14 @@
                 </label>
             </div>
         </div>
-
         <div class="p-4 md:p-3 border-t border-gray-200 dark:border-[#26282b] bg-gray-50 dark:bg-[#141518] flex flex-col gap-3 md:gap-2">
             <button id="btn-upload-stub" class="w-full py-3 md:py-2 bg-white dark:bg-[#2c2e33] hover:bg-gray-100 dark:hover:bg-[#35383e] border border-gray-300 dark:border-[#3e4247] text-gray-700 dark:text-gray-200 rounded transition-all cursor-pointer flex justify-center items-center gap-2 text-[12px] md:text-[11px] shadow-sm dark:shadow-none">
                 <i class="ph ph-upload-simple text-base"></i> <span data-i18n="loadModel">Load Design Model</span>
             </button>
-            <button id="btn-reset-scene" class="w-full py-2 text-gray-500 dark:text-[#a0a5ab] hover:text-gray-800 dark:hover:text-gray-200 text-[11px] md:text-[10px] cursor-pointer transition-colors text-center" data-i18n="resetScene">
+            <button id="btn-load-sample" class="w-full py-2 bg-white dark:bg-[#2c2e33] hover:bg-gray-100 dark:hover:bg-[#35383e] border border-gray-300 dark:border-[#3e4247] text-emerald-600 dark:text-emerald-400 rounded transition-all cursor-pointer flex justify-center items-center gap-2 text-[12px] md:text-[11px] shadow-sm dark:shadow-none">
+                <i class="ph ph-folder-open text-base"></i> <span data-i18n="loadSample">Load model.glb</span>
+            </button>
+            <button id="btn-reset-scene" class="w-full py-2 text-gray-500 dark:text-[#a0a5ab] hover:text-gray-800 dark:hover:text-gray-200 text-[11px] md:text-[10px] cursor-pointer transition-colors text-center mt-1" data-i18n="resetScene">
                 Reset Organic Pavilion
             </button>
         </div>
@@ -153,14 +193,25 @@
         <div id="btn-toggle-right-arrow" class="absolute -left-6 top-1/2 -translate-y-1/2 w-6 h-16 bg-white dark:bg-[#141518] border-y border-l border-gray-200 dark:border-[#26282b] rounded-l flex items-center justify-center cursor-pointer shadow-md text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white transition-colors z-50">
             <i id="icon-right-arrow" class="ph ph-caret-right text-lg"></i>
         </div>
-
         <div class="flex border-b border-gray-200 dark:border-[#26282b] bg-gray-50 dark:bg-[#141518]">
             <button class="flex-1 py-3 md:py-2 text-center font-medium border-b-2 border-emerald-500 text-gray-800 dark:text-gray-100 bg-white dark:bg-[#1a1b1f] text-[12px] md:text-[11px]" data-i18n="inspector">Inspector</button>
             <i id="btn-close-right" class="ph ph-x text-gray-600 dark:text-gray-200 md:hidden text-lg absolute right-4 top-3 z-50 cursor-pointer"></i>
         </div>
-
         <div class="flex-1 overflow-y-auto p-4 flex flex-col gap-5 pb-10">
-            <!-- 뷰 및 렌즈 제어 -->
+            <div class="flex flex-col gap-2">
+                <div class="flex justify-between items-center text-gray-800 dark:text-gray-200 font-semibold mb-1 text-[12px] md:text-[11px]">
+                    <span data-i18n="metaverse">Metaverse Avatar</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px]" data-i18n="avatarID">Avatar ID</label>
+                    <input type="text" id="avatar-id-input" value="Guest" class="w-32 bg-gray-100 dark:bg-[#2c2e33] border border-gray-300 dark:border-[#3e4247] rounded px-2 py-1 text-gray-700 dark:text-gray-200 text-right outline-none">
+                </div>
+                <div class="flex items-center justify-between mt-1">
+                    <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px]" data-i18n="avatarColor">Color</label>
+                    <input type="color" id="avatar-color-input" value="#3b82f6" class="w-8 h-6 bg-transparent border-0 cursor-pointer p-0">
+                </div>
+            </div>
+            <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
             <div class="flex flex-col gap-2">
                 <div class="flex justify-between items-center text-gray-800 dark:text-gray-200 font-semibold mb-1 text-[12px] md:text-[11px]">
                     <span data-i18n="camOptics">Camera & Optics</span>
@@ -169,27 +220,22 @@
                     <button id="btn-view-fps" class="py-2 md:py-1.5 hover:bg-gray-200 dark:hover:bg-[#2c2e33] text-gray-600 dark:text-[#a0a5ab] border border-transparent rounded flex items-center justify-center gap-1.5 transition-colors text-[12px] md:text-[11px] font-medium">
                         <i class="ph-fill ph-person-simple-walk"></i> <span data-i18n="fps">1st Person</span>
                     </button>
-                    <!-- ★ 3인칭 기본 액티브 상태 세팅 ★ -->
                     <button id="btn-view-tps" class="py-2 md:py-1.5 bg-emerald-100 dark:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-700/50 rounded flex items-center justify-center gap-1.5 transition-colors text-[12px] md:text-[11px] font-medium">
                         <i class="ph-fill ph-video-camera"></i> <span data-i18n="tps">3rd Person</span>
                     </button>
                 </div>
-                
                 <div class="flex items-center justify-between mt-2">
                     <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px] w-16" data-i18n="lens">Lens (mm)</label>
-                    <!-- ★ 렌즈범위 5mm ~ 50mm, 초광각 10mm 기본 ★ -->
                     <input type="range" id="slider-focal" min="5" max="50" step="1" value="10" class="flex-1 mx-2">
                     <span id="lbl-focal" class="w-12 text-right font-mono text-gray-600 dark:text-[#a0a5ab] text-[12px] md:text-[11px]">10mm</span>
                 </div>
                 <div class="flex items-center justify-between mt-1">
                     <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px] w-16" data-i18n="speed">Speed</label>
-                    <input type="range" id="slider-cam-speed" min="0.5" max="25" step="0.5" value="4" class="flex-1 mx-2">
+                    <input type="range" id="slider-cam-speed" min="0.5" max="25" step="0.5" value="4.0" class="flex-1 mx-2">
                     <span id="lbl-speed" class="w-12 text-right font-mono text-gray-600 dark:text-[#a0a5ab] text-[12px] md:text-[11px]">4.0m/s</span>
                 </div>
             </div>
-
             <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
-
             <div class="flex flex-col gap-2">
                 <div class="flex justify-between items-center text-gray-800 dark:text-gray-200 font-semibold text-[12px] md:text-[11px]">
                     <span data-i18n="sectionCut">Section / Plan Cut</span>
@@ -207,9 +253,7 @@
                     <input type="range" id="clip-z" min="-100" max="100" step="0.5" value="100" class="flex-1 mx-2 accent-blue-500">
                 </div>
             </div>
-
             <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
-
             <div class="flex flex-col gap-2">
                 <div class="flex justify-between items-center text-gray-800 dark:text-gray-200 font-semibold text-[12px] md:text-[11px]">
                     <span data-i18n="atmosphere">Atmosphere</span>
@@ -230,18 +274,14 @@
                     <span class="w-12"></span>
                 </div>
             </div>
-
             <div class="h-px bg-gray-200 dark:bg-[#26282b]"></div>
-
             <div class="flex flex-col gap-3">
                 <div class="flex justify-between items-center">
                     <span class="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1 text-[12px] md:text-[11px]"><i class="ph-fill ph-heartbeat"></i> <span data-i18n="biometrics">Live Biometrics</span></span>
                     <span id="txt-ble-status" class="text-[10px] text-amber-600 dark:text-amber-500 bg-amber-100 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/30 px-2 py-1 md:px-1.5 md:py-0.5 rounded cursor-pointer font-medium hover:bg-amber-200 dark:hover:bg-amber-500/20 transition-colors">BLE Connect</span>
                 </div>
-
                 <div class="bg-white dark:bg-[#141518] rounded border border-gray-200 dark:border-[#26282b] p-4 md:p-3 flex flex-col gap-3 relative overflow-hidden shadow-sm dark:shadow-none">
                     <div class="absolute -right-4 -top-4 opacity-5 text-emerald-500"><i class="ph-fill ph-activity text-6xl"></i></div>
-                    
                     <div class="flex justify-between items-end relative z-10">
                         <div>
                             <div class="text-gray-500 dark:text-[#a0a5ab] text-[10px] mb-0.5 uppercase tracking-wider" data-i18n="hr">Heart Rate</div>
@@ -255,9 +295,7 @@
                             <span id="txt-stress" class="text-xl md:text-lg font-mono text-amber-600 dark:text-amber-400">32%</span>
                         </div>
                     </div>
-
                     <canvas id="canvas-ecg" width="230" height="40" class="w-full bg-gray-50 dark:bg-[#0a0a0c] border border-gray-100 dark:border-[#1a1b1f] rounded"></canvas>
-                    
                     <div>
                         <div class="flex justify-between text-[10px] mb-1">
                             <span class="text-gray-500 dark:text-[#a0a5ab] uppercase tracking-wider">GSR Level</span>
@@ -268,7 +306,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="flex justify-between items-center mt-1">
                     <label class="text-gray-500 dark:text-[#a0a5ab] text-[12px] md:text-[11px]">Sensitivity</label>
                     <select id="select-sensitivity" class="bg-white dark:bg-[#141518] border border-gray-300 dark:border-[#3e4247] rounded px-2 py-1.5 text-gray-700 dark:text-gray-200 text-[12px] md:text-[11px] outline-none w-28 text-right focus:border-emerald-500">
@@ -276,13 +313,6 @@
                         <option value="normal" selected>Normal</option>
                         <option value="low">Low</option>
                     </select>
-                </div>
-
-                <div class="flex flex-col gap-2 mt-2">
-                    <span class="text-gray-500 dark:text-[#a0a5ab] font-semibold text-[10px] uppercase tracking-wider">Spatial Analysis</span>
-                    <div id="txt-ai-diagnosis" class="text-gray-600 dark:text-[#a0a5ab] leading-relaxed text-[10px] bg-white dark:bg-[#141518] p-2.5 rounded border border-gray-200 dark:border-[#26282b] min-h-[50px] shadow-sm dark:shadow-none">
-                        Waiting for movement to scan spatial density...
-                    </div>
                 </div>
             </div>
 
@@ -312,7 +342,6 @@
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247]"></div>
             <div class="flex items-center gap-1 font-medium">
                 <span class="text-gray-500 dark:text-gray-400 hidden sm:inline">Unit:</span>
-                <!-- ★ 미터법(M) 기반으로 네이티브 단위 조정 완료 ★ -->
                 <select id="select-model-unit" class="bg-gray-100 dark:bg-[#2c2e33] border border-gray-300 dark:border-[#3e4247] rounded px-1 py-0.5 text-gray-700 dark:text-gray-200 text-[10px] outline-none cursor-pointer">
                     <option value="1" selected>Meters (M) - Native</option>
                     <option value="0.001">Millimeters (MM)</option>
@@ -331,30 +360,172 @@
 
         <div class="flex items-center gap-2 md:gap-4">
             <div class="hidden xl:flex gap-2 font-medium">
-                <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300">DblClick</span>=Teleport
-                <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300 ml-1">LMB</span>=Look
+                <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300">Space</span>=Jump
+                <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300 ml-1">F</span>=Walk/Fly
+                <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300 ml-1">DblClick</span>=Teleport
                 <span class="bg-gray-100 dark:bg-[#2c2e33] px-1 rounded text-gray-600 dark:text-gray-300 ml-1">H</span>=Hide UI
             </div>
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247] hidden xl:block"></div>
-            <div class="hidden sm:block w-36 font-medium">POS: <span id="txt-pos" class="text-gray-700 dark:text-gray-300">0.0, 1.75, 0.0</span></div>
+            <div class="hidden sm:block w-36 font-medium">POS: <span id="txt-pos" class="text-gray-700 dark:text-gray-300">0.0, 0.0, 0.0</span></div>
             <div class="h-3 w-px bg-gray-300 dark:bg-[#3e4247] hidden sm:block"></div>
             <div class="w-10 text-right font-medium">FPS: <span id="txt-fps" class="text-emerald-600 dark:text-emerald-400 font-bold">60</span></div>
         </div>
     </footer>
 
-    <!-- 자바스크립트 엔진 -->
-    <script>
-        const i18n = {
-            ko: { title: "Architecture Viewer Beta", hideUI: "UI 숨기기 (H)", showUI: "UI 복원 (H)", sceneList: "Scene List", noModel: "모델을 업로드하면 레이어가 표시됩니다.", showMinimap: "Show UI Minimap", gazeLayer: "Gaze Heatmap Layer", avatarLayer: "Character Avatar", loadModel: "Load Design Model", resetScene: "Reset Organic Pavilion", inspector: "Inspector", camOptics: "Camera & Optics", fps: "1st Person", tps: "3rd Person", lens: "Lens (mm)", speed: "Speed", sectionCut: "Section / Plan Cut", atmosphere: "Atmosphere", time: "Sun Time", cloud: "Cloudiness", modelLights: "Model Lights", biometrics: "Live Biometrics", hr: "Heart Rate", stress: "Stress Index", saveCsv: "Save CSV", saveGltf: "Save GLTF", emailData: "Email Data (kris@kil.kr)", walkFly: "걷기/날기" },
-            en: { title: "Architecture Viewer Beta", hideUI: "Hide UI (H)", showUI: "Show UI (H)", sceneList: "Scene Layers", noModel: "Layers will appear when model is loaded.", showMinimap: "Show Minimap", gazeLayer: "Gaze Heatmap Layer", avatarLayer: "Character Avatar", loadModel: "Import GLB Model", resetScene: "Reset Pavilion", inspector: "Properties", camOptics: "Camera & Optics", fps: "1st Person", tps: "3rd Person", lens: "Focal (mm)", speed: "Move Speed", sectionCut: "Clipping Planes", atmosphere: "Environment", time: "Sun Time", cloud: "Cloud Cover", modelLights: "Emissive Lights", biometrics: "Live Biometrics", hr: "Heart Rate", stress: "Stress Level", saveCsv: "Save CSV", saveGltf: "Save GLTF", emailData: "Email Data (kris@kil.kr)", walkFly: "Walk/Fly" },
-            zh: { title: "建筑可视化测试版", hideUI: "隐藏界面 (H)", showUI: "恢复界面 (H)", sceneList: "场景图层", noModel: "上传模型后显示图层。", showMinimap: "显示小地图", gazeLayer: "视线热力图层", avatarLayer: "角色模型", loadModel: "导入设计模型", resetScene: "重置基础场景", inspector: "属性面板", camOptics: "相机与光学", fps: "第一人称", tps: "第三人称", lens: "焦距 (mm)", speed: "移动速度", sectionCut: "剖面切割", atmosphere: "环境与天气", time: "太阳时间", cloud: "云量", modelLights: "模型灯光", biometrics: "实时生理数据", hr: "心率 (BPM)", stress: "压力指数", saveCsv: "保存 CSV", saveGltf: "保存 GLTF", emailData: "发送邮件 (kris@kil.kr)", walkFly: "步行/飞行" }
-        };
+    <!-- Firebase SDK (ES Modules) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, doc, setDoc, onSnapshot, serverTimestamp, deleteDoc, addDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        function setLanguage(lang) {
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (i18n[lang] && i18n[lang][key]) el.textContent = i18n[lang][key];
-            });
+        let db, auth, currentUser, appId;
+        let isMultiplayerActive = false;
+        const remotePlayers = {};
+        
+        if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+            try {
+                const app = initializeApp(JSON.parse(__firebase_config));
+                auth = getAuth(app); db = getFirestore(app);
+                appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+                const initAuth = async () => {
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
+                    } else await signInAnonymously(auth);
+                };
+                initAuth();
+
+                onAuthStateChanged(auth, user => {
+                    if(user) { currentUser = user; isMultiplayerActive = true; initMultiplayerNetwork(); }
+                });
+            } catch(e) { console.error("Firebase init failed", e); }
+        }
+
+        function initMultiplayerNetwork() {
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'players'), snap => {
+                const now = Date.now();
+                const currentIds = new Set();
+                snap.forEach(docSnap => {
+                    const data = docSnap.data();
+                    if(data.id === currentUser.uid) return;
+                    if(now - data.timestamp > 10000) { removeRemotePlayer(data.id); return; }
+                    currentIds.add(data.id); updateRemotePlayer(data);
+                });
+                Object.keys(remotePlayers).forEach(id => { if(!currentIds.has(id)) removeRemotePlayer(id); });
+            }, err => console.error(err));
+
+            onSnapshot(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), snap => {
+                const msgBox = document.getElementById('chat-messages');
+                if(!msgBox) return;
+                const msgs = [];
+                snap.forEach(doc => msgs.push(doc.data()));
+                msgs.sort((a,b) => a.timestamp - b.timestamp); 
+                msgBox.innerHTML = '';
+                msgs.slice(-15).forEach(m => {
+                    const el = document.createElement('div'); el.className = 'chat-msg';
+                    el.innerHTML = `<span style="color:${m.color};font-weight:bold">${m.name}</span>: ${m.text}`;
+                    msgBox.appendChild(el);
+                });
+                msgBox.scrollTop = msgBox.scrollHeight;
+            }, err => console.error(err));
+
+            const btnSend = document.getElementById('chat-send');
+            const inpChat = document.getElementById('chat-input');
+            if(btnSend && inpChat) {
+                const sendChat = () => {
+                    const text = inpChat.value.trim();
+                    if(!text || !isMultiplayerActive) return;
+                    addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'messages'), {
+                        id: currentUser.uid, name: document.getElementById('avatar-id-input').value || 'Guest', color: document.getElementById('avatar-color-input').value || '#ffffff', text: text, timestamp: Date.now()
+                    });
+                    inpChat.value = '';
+                };
+                btnSend.addEventListener('click', sendChat);
+                inpChat.addEventListener('keydown', e => { if(e.key === 'Enter') sendChat(); });
+            }
+            
+            setInterval(() => {
+                if(!window.avatarGroup) return;
+                setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'players', currentUser.uid), {
+                    id: currentUser.uid, name: document.getElementById('avatar-id-input').value || 'Guest', color: document.getElementById('avatar-color-input').value || '#ffffff',
+                    x: window.avatarGroup.position.x, y: window.avatarGroup.position.y, z: window.avatarGroup.position.z, rotY: window.avatarGroup.rotation.y, action: window.currentActionName || 'idle', timestamp: Date.now()
+                });
+            }, 100);
+        }
+
+        function updateRemotePlayer(data) {
+            if(!window.scene) return;
+            let player = remotePlayers[data.id];
+            if(!player) {
+                player = { group: new window.THREE.Group(), mixer: null, actions: {}, label: null };
+                const bodyGeo = new window.THREE.CylinderGeometry(0.2, 0.2, 1.3, 16);
+                const headGeo = new window.THREE.SphereGeometry(0.15, 16, 16);
+                const mat = new window.THREE.MeshStandardMaterial({ color: data.color });
+                const body = new window.THREE.Mesh(bodyGeo, mat); body.position.y = 0.65; body.castShadow = true;
+                const head = new window.THREE.Mesh(headGeo, mat); head.position.y = 1.45; head.castShadow = true;
+                player.group.add(body); player.group.add(head);
+                window.scene.add(player.group);
+                
+                const label = document.createElement('div'); label.className = 'player-label'; label.textContent = data.name;
+                document.getElementById('labels-container').appendChild(label); player.label = label;
+                remotePlayers[data.id] = player;
+            }
+
+            player.group.position.lerp(new window.THREE.Vector3(data.x, data.y, data.z), 0.3);
+            player.group.rotation.y = window.THREE.MathUtils.lerp(player.group.rotation.y, data.rotY, 0.3);
+            player.group.children.forEach(c => { if(c.material) c.material.color.set(data.color); });
+            if(player.label) player.label.textContent = data.name;
+            
+            if(player.label && window.camera) {
+                const vec = new window.THREE.Vector3(data.x, data.y + 1.8, data.z);
+                vec.project(window.camera);
+                const x = (vec.x * .5 + .5) * window.innerWidth; const y = (vec.y * -.5 + .5) * window.innerHeight;
+                if(vec.z > 1) player.label.style.display = 'none'; 
+                else { player.label.style.display = 'block'; player.label.style.left = `${x}px`; player.label.style.top = `${y}px`; }
+            }
+        }
+
+        function removeRemotePlayer(id) {
+            const player = remotePlayers[id];
+            if(player) { if(player.group) window.scene.remove(player.group); if(player.label) player.label.remove(); delete remotePlayers[id]; }
+        }
+    </script>
+
+    <!-- 싱글 플레이어 엔진 및 UI 로직 -->
+    <script>
+        window.THREE = THREE;
+
+        // 드래그 유틸리티 (미니맵 & 채팅창)
+        function makeDraggable(el) {
+            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+            const handle = el.querySelector('.drag-handle') || el;
+            handle.addEventListener('mousedown', dragMouseDown);
+            handle.addEventListener('touchstart', dragTouchStart, {passive: false});
+
+            function dragMouseDown(e) {
+                e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY;
+                document.addEventListener('mouseup', closeDragElement);
+                document.addEventListener('mousemove', elementDrag);
+            }
+            function elementDrag(e) {
+                e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY;
+                el.style.top = (el.offsetTop - pos2) + "px"; el.style.left = (el.offsetLeft - pos1) + "px";
+                el.style.right = 'auto'; el.style.bottom = 'auto';
+            }
+            function dragTouchStart(e) {
+                const touch = e.touches[0]; pos3 = touch.clientX; pos4 = touch.clientY;
+                document.addEventListener('touchend', closeDragElement); document.addEventListener('touchmove', elementTouchDrag, {passive: false});
+            }
+            function elementTouchDrag(e) {
+                e.preventDefault(); const touch = e.touches[0];
+                pos1 = pos3 - touch.clientX; pos2 = pos4 - touch.clientY; pos3 = touch.clientX; pos4 = touch.clientY;
+                el.style.top = (el.offsetTop - pos2) + "px"; el.style.left = (el.offsetLeft - pos1) + "px";
+                el.style.right = 'auto'; el.style.bottom = 'auto';
+            }
+            function closeDragElement() {
+                document.removeEventListener('mouseup', closeDragElement); document.removeEventListener('mousemove', elementDrag);
+                document.removeEventListener('touchend', closeDragElement); document.removeEventListener('touchmove', elementTouchDrag);
+            }
         }
 
         let scene, camera, renderer, clock, container;
@@ -369,12 +540,21 @@
         let cameraYaw = 0, cameraPitch = 0;
         let currentVelocity = new THREE.Vector3();
         let targetVelocity = new THREE.Vector3();
-        let moveSpeed = 4.0; // ★ 미터 스케일에 맞게 속도 조정 (4.0m/s) ★
+        let moveSpeed = 4.0; 
         const keysPressed = { w: false, a: false, s: false, d: false, q: false, e: false, shift: false };
         
-        // ★ 3인칭 기본, 원점 스폰 설정 완료 ★
+        let isJumping = false;
+        let yVelocity = 0;
+        const GRAVITY = -15.0; 
+        const JUMP_POWER = 6.0; 
+        let groundY = 0; 
+        let isTeleporting = false;
+        let teleportTarget = new THREE.Vector3();
+        
         let viewMode = 'tps'; let movementMode = 'fly'; 
         let avatarGroup; let mixer, idleAction, walkAction, runAction, currentAction;
+        window.currentActionName = 'idle'; 
+        
         let baseBPM = 66, currentBPM = 66, baseGSR = 2.1, currentGSR = 2.1;
         let stressIndex = 25, sensitivity = 'normal';
         let ecgCanvas, ecgCtx, ecgPoints = [], ecgX = 0;
@@ -390,7 +570,6 @@
         
         let minimapCamera, showMinimap = true;
 
-        // ★ 미터 단위에 맞게 클리핑 플레인 거리 조정 ★
         let clipPlanes = [
             new THREE.Plane(new THREE.Vector3(-1, 0, 0), 100),
             new THREE.Plane(new THREE.Vector3(0, -1, 0), 100),
@@ -419,12 +598,12 @@
             container = document.getElementById('canvas-container');
             clock = new THREE.Clock();
             scene = new THREE.Scene();
+            window.scene = scene;
 
-            // ★ M(미터) 네이티브 카메라로 파라미터 전부 수정 ★
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 5000);
             camera.position.set(0, 5, 12);
-            // 기본 광각 10mm로 세팅
             camera.setFocalLength(10); 
+            window.camera = camera;
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance", alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
@@ -441,18 +620,25 @@
             minimapCamera.lookAt(0, 0, 0);
 
             renderer.xr.enabled = true;
-            
             if (typeof VRButton !== 'undefined') {
                 const vrBtn = VRButton.createButton(renderer);
-                vrBtn.style.bottom = '40px'; 
-                document.body.appendChild(vrBtn);
+                vrBtn.style.bottom = '40px'; document.body.appendChild(vrBtn);
             } else if (THREE.VRButton) {
                 const vrBtn = THREE.VRButton.createButton(renderer);
-                vrBtn.style.bottom = '40px'; 
-                document.body.appendChild(vrBtn);
-            } else {
-                console.warn("VRButton script failed to load. VR features are disabled.");
+                vrBtn.style.bottom = '40px'; document.body.appendChild(vrBtn);
             }
+
+            // ★ HDRI 360 스카이돔 로드 ★
+            const rgbeLoader = new THREE.RGBELoader();
+            rgbeLoader.setDataType(THREE.UnsignedByteType); 
+            rgbeLoader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/textures/equirectangular/royal_esplanade_1k.hdr', function(texture) {
+                const pmremGenerator = new THREE.PMREMGenerator(renderer);
+                const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+                scene.background = envMap;
+                scene.environment = envMap;
+                texture.dispose();
+                pmremGenerator.dispose();
+            });
 
             hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
             scene.add(hemiLight);
@@ -466,12 +652,6 @@
             dirLight.shadow.bias = -0.0005;
             scene.add(dirLight);
 
-            const sunGeo = new THREE.SphereGeometry(2, 32, 32);
-            const sunMat = new THREE.MeshBasicMaterial({color: 0xffffee});
-            const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-            dirLight.add(sunMesh); 
-
-            // 500m 짜리 미터법 대지
             const groundMat = new THREE.MeshStandardMaterial({ color: 0x86b36e, roughness: 0.8, clippingPlanes: clipPlanes });
             groundMesh = new THREE.Mesh(new THREE.PlaneGeometry(500, 500), groundMat);
             groundMesh.rotation.x = -Math.PI / 2; groundMesh.receiveShadow = true;
@@ -488,10 +668,10 @@
             });
             scene.add(transformControl);
 
-            // ★ 캐릭터 그룹 원점 (0,0,0) 세팅 ★
             avatarGroup = new THREE.Group();
             avatarGroup.position.set(0, 0, 0); 
             scene.add(avatarGroup);
+            window.avatarGroup = avatarGroup;
 
             buildOrganicPavilionScene(); 
             loadAvatarModel(); 
@@ -504,13 +684,27 @@
             registerInputEvents();
             registerMobileTouchEvents();
             registerUiControlEvents();
+            
+            // 드래그 가능한 창 초기화
+            makeDraggable(document.getElementById('minimap-border'));
+            makeDraggable(document.getElementById('chat-container'));
+
             updatePanels();
             window.addEventListener('resize', onWindowResize);
             
+            document.documentElement.classList.remove('dark');
             updateThemeVisuals(); 
-            switchViewMode('tps'); // 기본 TPS
             
-            notify("System Ready. VR & Teleport Enabled.", "success");
+            // ★ 초기 상태 설정 (FLY & 조감도 뷰) ★
+            movementMode = 'fly';
+            switchViewMode('fps'); 
+            
+            camera.updateProjectionMatrix();
+            setTimeout(() => {
+                resetView();
+                renderer.render(scene, camera); 
+                notify("System Ready. Multi-player Enabled.", "success");
+            }, 800); 
 
             renderer.setAnimationLoop(animate);
         }
@@ -520,16 +714,19 @@
             const sCloud = document.getElementById('slider-cloud');
             const cloudFactor = sCloud ? parseFloat(sCloud.value) : 0;
             
+            // HDRI가 있으므로 Background는 무시될 수 있으나 Fog 연동을 위해 세팅
             const baseColor = isDark ? new THREE.Color(0x0a0a0c) : new THREE.Color(0x87CEEB); 
             const cloudColor = isDark ? new THREE.Color(0x1a1a1c) : new THREE.Color(0xa0aab5);
             const finalColor = baseColor.clone().lerp(cloudColor, cloudFactor);
             
-            scene.background = finalColor;
             if(!scene.fog) scene.fog = new THREE.FogExp2(finalColor, 0.015);
             else scene.fog.color.copy(finalColor);
 
             if(dirLight) dirLight.intensity = 1.2 * (1.0 - cloudFactor * 0.7);
             if(hemiLight) hemiLight.intensity = 0.6 * (1.0 - cloudFactor * 0.3);
+            
+            // 씬 환경맵 밝기 조절 (꼼수: 전체 조명 강도로 대체)
+            renderer.toneMappingExposure = 1.0 - (cloudFactor * 0.5);
         }
 
         function updatePanels() {
@@ -545,9 +742,11 @@
                 rightPanel.style.transform = isRightOpen ? 'translateX(0)' : 'translateX(100%)';
                 iconR.className = isRightOpen ? 'ph ph-caret-right text-lg' : 'ph ph-caret-left text-lg';
             }
-            if(borderM) borderM.style.display = (isUIHidden || !showMinimap) ? 'none' : 'block';
+            // 미니맵은 UI가 닫혀있어도 토글 상태에 따라 보이게 설정 가능
+            if(borderM) borderM.style.display = showMinimap ? 'flex' : 'none';
         }
 
+        // ★ Bird's-eye View 최적화 리셋 ★
         function resetView() {
             if (!activeModelGroup) return;
             const box = new THREE.Box3().setFromObject(activeModelGroup);
@@ -556,7 +755,6 @@
             const size = box.getSize(new THREE.Vector3());
             const maxDim = Math.max(size.x, size.y, size.z);
             
-            const optimalDist = maxDim * 0.8 || 10;
             camera.far = Math.max(200, maxDim * 5);
             camera.updateProjectionMatrix();
 
@@ -568,16 +766,15 @@
             minimapCamera.updateProjectionMatrix();
 
             if(avatarGroup) {
-                avatarGroup.position.set(center.x, box.min.y, box.max.z + optimalDist);
-                targetYaw = 0; targetPitch = 0;
-                cameraYaw = 0; cameraPitch = 0;
+                // 상공에서 45도로 내려다보는 초기 뷰 세팅
+                avatarGroup.position.set(center.x, box.max.y + maxDim * 1.2, center.z + maxDim * 1.5);
+                targetYaw = 0; targetPitch = -Math.PI / 6; 
+                cameraYaw = 0; cameraPitch = -Math.PI / 6; 
                 
                 const targetRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(cameraPitch, cameraYaw, 0, 'YXZ'));
                 camera.quaternion.copy(targetRot);
-                if (viewMode === 'fps') camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1.75, avatarGroup.position.z);
-                else camera.position.copy(avatarGroup.position.clone().add(new THREE.Vector3(0, 2.0, 4.0).applyQuaternion(targetRot)));
+                camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1.75, avatarGroup.position.z);
             }
-            notify("View Restored and Framed.", "success");
         }
 
         function updateSceneLayerUI(rootGroup) {
@@ -591,77 +788,40 @@
             }
 
             const nodes = [];
-            rootGroup.children.forEach(child => {
-                if(child.isMesh || child.isGroup) nodes.push(child);
-            });
+            rootGroup.children.forEach(child => { if(child.isMesh || child.isGroup) nodes.push(child); });
 
             nodes.forEach((node, index) => {
                 const row = document.createElement('div');
                 row.className = "flex items-center justify-between p-1.5 hover:bg-gray-100 dark:hover:bg-[#2c2e33] rounded text-[11px] text-gray-700 dark:text-gray-300 transition-colors";
-                
                 const nameSpan = document.createElement('span');
-                nameSpan.className = "truncate w-32";
-                nameSpan.textContent = node.name || `Object_${index}`;
+                nameSpan.className = "truncate w-32"; nameSpan.textContent = node.name || `Object_${index}`;
                 
-                const tools = document.createElement('div');
-                tools.className = "flex gap-1";
+                const tools = document.createElement('div'); tools.className = "flex gap-1";
 
                 const btnVis = document.createElement('i');
                 btnVis.className = `ph-fill ph-eye layer-btn ${node.visible ? 'active' : ''}`;
-                btnVis.title = "Hide/Show";
-                btnVis.onclick = (e) => {
-                    e.stopPropagation();
-                    node.visible = !node.visible;
-                    btnVis.className = `ph-fill ${node.visible ? 'ph-eye active' : 'ph-eye-slash text-gray-400'} layer-btn`;
-                };
+                btnVis.onclick = (e) => { e.stopPropagation(); node.visible = !node.visible; btnVis.className = `ph-fill ${node.visible ? 'ph-eye active' : 'ph-eye-slash text-gray-400'} layer-btn`; };
 
                 const btnLock = document.createElement('i');
                 btnLock.className = `ph-fill ${node.userData.locked ? 'ph-lock-key locked' : 'ph-lock-key-open text-gray-400'} layer-btn`;
-                btnLock.title = "Lock (Prevent Edit)";
-                btnLock.onclick = (e) => {
-                    e.stopPropagation();
-                    node.userData.locked = !node.userData.locked;
-                    btnLock.className = `ph-fill ${node.userData.locked ? 'ph-lock-key locked' : 'ph-lock-key-open text-gray-400'} layer-btn`;
-                    if(node.userData.locked && transformControl.object === node) transformControl.detach();
-                };
+                btnLock.onclick = (e) => { e.stopPropagation(); node.userData.locked = !node.userData.locked; btnLock.className = `ph-fill ${node.userData.locked ? 'ph-lock-key locked' : 'ph-lock-key-open text-gray-400'} layer-btn`; if(node.userData.locked && transformControl.object === node) transformControl.detach(); };
 
                 const btnIso = document.createElement('i');
                 btnIso.className = "ph-fill ph-star layer-btn text-amber-500 opacity-50";
-                btnIso.title = "Isolate";
                 btnIso.onclick = (e) => {
-                    e.stopPropagation();
-                    const isIsolating = !node.userData.isolated;
-                    nodes.forEach(n => {
-                        if(n !== node) {
-                            n.visible = !isIsolating;
-                            n.userData.isolated = false;
-                        } else {
-                            n.visible = true;
-                            n.userData.isolated = isIsolating;
-                        }
-                    });
+                    e.stopPropagation(); const isIsolating = !node.userData.isolated;
+                    nodes.forEach(n => { if(n !== node) { n.visible = !isIsolating; n.userData.isolated = false; } else { n.visible = true; n.userData.isolated = isIsolating; } });
                     updateSceneLayerUI(rootGroup); 
                 };
 
-                tools.appendChild(btnVis);
-                tools.appendChild(btnLock);
-                tools.appendChild(btnIso);
+                tools.appendChild(btnVis); tools.appendChild(btnLock); tools.appendChild(btnIso);
+                row.appendChild(nameSpan); row.appendChild(tools);
                 
-                row.appendChild(nameSpan);
-                row.appendChild(tools);
-                
-                row.onclick = () => {
-                    if(!node.userData.locked) {
-                        setTransformMode('translate', document.getElementById('btn-tool-move'));
-                        transformControl.attach(node);
-                    } else notify("Locked item cannot be selected.", "error");
-                };
-
+                row.onclick = () => { if(!node.userData.locked) { setTransformMode('translate', document.getElementById('btn-tool-move')); transformControl.attach(node); } };
                 listContainer.appendChild(row);
             });
         }
 
-        // 미터 스케일 파빌리온
         function buildOrganicPavilionScene() {
             activeModelGroup = new THREE.Group();
             scene.add(activeModelGroup);
@@ -674,7 +834,6 @@
                 z -= (Math.pow(x, 2) + Math.pow(y, 2)) * 0.035; pos.setZ(i, z);
             }
             roofGeo.computeVertexNormals();
-            
             const roofMat = new THREE.MeshStandardMaterial({ color: 0xf5f5f5, roughness: 0.4, metalness: 0.1, side: THREE.DoubleSide, clippingPlanes: clipPlanes });
             const roof = new THREE.Mesh(roofGeo, roofMat);
             roof.name = "Organic Roof";
@@ -706,19 +865,65 @@
             updateSceneLayerUI(null);
         }
 
+        function loadSampleModel() {
+            const loader = new THREE.GLTFLoader();
+            const dracoLoader = new THREE.DRACOLoader();
+            dracoLoader.setDecoderPath('https://www.gstatic.com/draco/v1/decoders/');
+            loader.setDRACOLoader(dracoLoader);
+
+            notify("Loading Sample Model...", "info");
+            loader.load('./model.glb', function (gltf) {
+                clearCurrentDemoScene();
+                activeModelGroup = gltf.scene;
+
+                const selEl = document.getElementById('select-model-unit');
+                const userScale = selEl ? parseFloat(selEl.value) : 1;
+                const box = new THREE.Box3().setFromObject(activeModelGroup);
+                const center = box.getCenter(new THREE.Vector3());
+                activeModelGroup.scale.set(userScale, userScale, userScale);
+                activeModelGroup.position.set(-center.x * userScale, -box.min.y * userScale, -center.z * userScale);
+
+                activeModelGroup.traverse((node) => {
+                    if (node.isMesh) {
+                        node.castShadow = true; node.receiveShadow = true;
+                        if (node.material) {
+                            if (Array.isArray(node.material)) node.material.forEach(m => m.clippingPlanes = clipPlanes);
+                            else node.material.clippingPlanes = clipPlanes;
+                            const checkEmissive = (m) => { if(m.emissive && m.emissive.getHex() > 0) modelEmissives.push(m); };
+                            if (Array.isArray(node.material)) node.material.forEach(checkEmissive); else checkEmissive(node.material);
+                        }
+                        structures.push(node);
+                    }
+                });
+                scene.add(activeModelGroup);
+                setTransformMode('view', document.getElementById('btn-tool-view'));
+                updateSceneLayerUI(activeModelGroup);
+                setTimeout(resetView, 100); 
+                notify("Sample Model Imported.", "success");
+            }, undefined, function (e) {
+                console.error(e);
+                notify("model.glb 파일이 같은 폴더에 없습니다. 먼저 다운로드하여 추가해주세요.", "error");
+            });
+        }
+
         function loadAvatarModel() {
             if(viewMode === 'fps' && avatarGroup) avatarGroup.visible = false;
             new THREE.GLTFLoader().load('https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb', function(gltf) {
                 const model = gltf.scene;
                 const box = new THREE.Box3().setFromObject(model);
-                const scale = 1.8 / (box.max.y - box.min.y); // 1.8m
+                const scale = 1.75 / (box.max.y - box.min.y); 
                 model.scale.set(scale, scale, scale); model.rotation.y = Math.PI; 
                 model.traverse(object => { if (object.isMesh) { object.castShadow = true; object.receiveShadow = true; } });
                 model.position.set(0, 0, 0); avatarGroup.add(model);
                 mixer = new THREE.AnimationMixer(model);
                 idleAction = mixer.clipAction(gltf.animations[0]); walkAction = mixer.clipAction(gltf.animations[3]); runAction = mixer.clipAction(gltf.animations[1]);
                 currentAction = idleAction; currentAction.play();
-            }, undefined, e => notify("Soldier avatar failed to load. Using invisible avatar.", "info"));
+                
+                const myColor = document.getElementById('avatar-color-input') ? document.getElementById('avatar-color-input').value : '#ffffff';
+                avatarGroup.children.forEach(c => {
+                    c.traverse(mesh => { if(mesh.isMesh && mesh.material) mesh.material.color.set(myColor); });
+                });
+            }, undefined, e => notify("Soldier avatar failed to load.", "info"));
         }
 
         function buildGazePointCloud() {
@@ -727,32 +932,6 @@
             geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(15000), 3));
             gazePointCloud = new THREE.Points(geo, new THREE.PointsMaterial({ size: 0.03, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending }));
             scene.add(gazePointCloud);
-        }
-
-        function applyTransform(obj, state) {
-            if(!obj || !state) return;
-            obj.position.copy(state.position);
-            obj.rotation.copy(state.rotation);
-            obj.scale.copy(state.scale);
-            obj.updateMatrixWorld();
-        }
-
-        function undoTransform() {
-            if (undoStack.length > 0) {
-                const action = undoStack.pop();
-                redoStack.push(action);
-                applyTransform(action.object, action.before);
-                notify("Undo Applied", "success");
-            } else notify("Nothing to undo.", "info");
-        }
-
-        function redoTransform() {
-            if (redoStack.length > 0) {
-                const action = redoStack.pop();
-                undoStack.push(action);
-                applyTransform(action.object, action.after);
-                notify("Redo Applied", "success");
-            } else notify("Nothing to redo.", "info");
         }
 
         function setTransformMode(mode, activeBtn) {
@@ -764,6 +943,7 @@
             else { transformControl.setMode(mode); if(!transformControl.object && activeModelGroup) transformControl.attach(activeModelGroup); }
         }
 
+        // ★ 텔레포트 애니메이션 트리거 ★
         function performTeleport(clientX, clientY) {
             if (isTransforming || currentTransformMode !== 'view' || !avatarGroup) return;
             const mouse = new THREE.Vector2((clientX / window.innerWidth) * 2 - 1, -(clientY / window.innerHeight) * 2 + 1);
@@ -771,9 +951,11 @@
             const intersects = raycaster.intersectObjects([...structures, groundMesh]);
             if (intersects.length > 0) {
                 const pt = intersects[0].point;
-                // 약간 위로 텔레포트
-                avatarGroup.position.set(pt.x, pt.y + 0.1, pt.z); 
-                notify("Teleported!", "success");
+                // 즉시 이동이 아닌 목표 지점 지정
+                teleportTarget.copy(pt);
+                teleportTarget.y += 0.1;
+                isTeleporting = true;
+                notify("Teleporting...", "info");
             }
         }
 
@@ -789,13 +971,31 @@
                 if (isTransforming) return;
                 const deltaX = e.clientX - mouseX; const deltaY = e.clientY - mouseY; mouseX = e.clientX; mouseY = e.clientY;
                 if (isLeftMouseDown && !e.shiftKey && currentTransformMode === 'view') {
-                    // ★ 직접 회전하지 않고 목표 회전값만 설정 (부드러운 관성용) ★
                     targetYaw -= deltaX * 0.003; targetPitch -= deltaY * 0.003;
                     targetPitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, targetPitch));
                 } else if (isMiddleMouseDown || (isLeftMouseDown && e.shiftKey)) {
-                    const factor = moveSpeed * 0.02; const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
-                    if (viewMode === 'fps') { avatarGroup.position.addScaledVector(right, -deltaX * factor); avatarGroup.position.y += deltaY * factor; } 
-                    else { camera.position.addScaledVector(right, -deltaX * factor); camera.position.y += deltaY * factor; }
+                    // ★ 뷰 모드 시 마우스 우클릭으로 센터 축 Orbit 회전 수행 ★
+                    if(currentTransformMode === 'view' && activeModelGroup) {
+                        const box = new THREE.Box3().setFromObject(activeModelGroup);
+                        const center = box.getCenter(new THREE.Vector3());
+                        
+                        const offset = avatarGroup.position.clone().sub(center);
+                        offset.applyAxisAngle(new THREE.Vector3(0,1,0), -deltaX * 0.005);
+                        
+                        const rightAxis = new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0), cameraYaw);
+                        offset.applyAxisAngle(rightAxis, -deltaY * 0.005);
+                        
+                        avatarGroup.position.copy(center).add(offset);
+                        
+                        // 시야 각도 재계산
+                        const lookDir = center.clone().sub(avatarGroup.position).normalize();
+                        targetPitch = Math.asin(lookDir.y);
+                        targetYaw = Math.atan2(-lookDir.x, -lookDir.z);
+                    } else {
+                        const factor = moveSpeed * 0.02; const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraYaw);
+                        if (viewMode === 'fps') { avatarGroup.position.addScaledVector(right, -deltaX * factor); avatarGroup.position.y += deltaY * factor; } 
+                        else { camera.position.addScaledVector(right, -deltaX * factor); camera.position.y += deltaY * factor; }
+                    }
                 }
             });
             window.addEventListener('contextmenu', e => e.preventDefault());
@@ -809,12 +1009,25 @@
 
             const keyHandler = (e, isDown) => {
                 if (isTransforming) return;
+                if (document.activeElement.id === 'chat-input' || document.activeElement.id === 'avatar-id-input') return;
+
                 const key = e.key.toLowerCase();
                 if (key in keysPressed) keysPressed[key] = isDown;
                 if (key === 'shift') keysPressed.shift = isDown;
+                
                 if (isDown) {
                     if (e.key === 'Escape') setTransformMode('view', document.getElementById('btn-tool-view'));
-                    if (e.key === ' ') { movementMode = (movementMode === 'fly') ? 'walk' : 'fly'; const n = document.getElementById('txt-nav-mode'); if (n) n.textContent = `${viewMode === 'fps' ? 'FPS' : 'TPS'} / ${movementMode.toUpperCase()}`; }
+                    
+                    if (e.key === ' ') { 
+                        if(movementMode === 'walk' && !isJumping) {
+                            isJumping = true; yVelocity = JUMP_POWER;
+                        }
+                    }
+                    if (key === 'f') {
+                        movementMode = (movementMode === 'fly') ? 'walk' : 'fly'; 
+                        const n = document.getElementById('txt-nav-mode'); if (n) n.textContent = `${viewMode === 'fps' ? 'FPS' : 'TPS'} / ${movementMode.toUpperCase()}`;
+                    }
+                    
                     if (key === 'h') { const t = document.getElementById('btn-toggle-ui'), r = document.getElementById('btn-restore-ui'); if (!isUIHidden) t.click(); else r.click(); }
                 }
             };
@@ -822,8 +1035,7 @@
         }
 
         function registerMobileTouchEvents() {
-            const isTouchUI = (e) => e.target.closest('aside') || e.target.closest('header') || e.target.closest('footer') || e.target.closest('.toast') || e.target.id.includes('toggle') || e.target.id.includes('restore');
-
+            const isTouchUI = (e) => e.target.closest('aside') || e.target.closest('header') || e.target.closest('footer') || e.target.closest('.toast') || e.target.id.includes('toggle') || e.target.id.includes('restore') || e.target.id.includes('chat') || e.target.id.includes('minimap');
             window.addEventListener('touchstart', e => {
                 if (isTouchUI(e) || isTransforming) return;
                 e.preventDefault(); 
@@ -842,7 +1054,6 @@
                     }
                 }
             }, {passive: false});
-
             window.addEventListener('touchmove', e => {
                 if (isTouchUI(e) || isTransforming) return;
                 e.preventDefault();
@@ -861,7 +1072,6 @@
                     }
                 }
             }, {passive: false});
-
             window.addEventListener('touchend', e => {
                 for(let touch of e.changedTouches) {
                     if (touch.identifier === touchMoveId) {
@@ -876,11 +1086,8 @@
             const subj = encodeURIComponent("Architecture Viewer Export Data");
             const body = encodeURIComponent(`Please find the exported ${isCSV ? 'CSV Tracking Data' : 'GLTF Baked Model'} file attached.\n(Note: Downloaded to your local device due to web security, please manually attach it to this email.)`);
             const mailtoLink = `mailto:kris@kil.kr?subject=${subj}&body=${body}`;
-            
-            const link = document.createElement("a"); 
-            link.href = fileUrl; link.download = isCSV ? `Export_${Date.now()}.csv` : `Export_${Date.now()}.gltf`;
+            const link = document.createElement("a"); link.href = fileUrl; link.download = isCSV ? `Export_${Date.now()}.csv` : `Export_${Date.now()}.gltf`;
             link.click();
-            
             notify("파일이 저장되었습니다. 메일에 직접 첨부하여 발송해주세요.", "success");
             setTimeout(() => { window.location.href = mailtoLink; }, 1000);
         }
@@ -949,22 +1156,22 @@
                 modelEmissives.forEach(mat => { mat.emissiveIntensity = val; });
             });
 
+            // 내 아바타 색 변경
+            const colorInput = document.getElementById('avatar-color-input');
+            if(colorInput) colorInput.addEventListener('input', e => {
+                if(avatarGroup) avatarGroup.children.forEach(c => c.traverse(m => { if(m.isMesh && m.material) m.material.color.set(e.target.value); }));
+            });
+
             const mapVisibility = (id, arr) => { const el = document.getElementById(id); if(el) el.addEventListener('change', e => arr.forEach(m => m.visible = e.target.checked)); }
             mapVisibility('chk-layer-struct', structures); mapVisibility('chk-layer-furniture', furniture);
             const chkGaze = document.getElementById('chk-layer-gaze'); if(chkGaze) chkGaze.addEventListener('change', e => { if(gazePointCloud) gazePointCloud.visible = e.target.checked; });
             const chkAvatar = document.getElementById('chk-layer-avatar'); if(chkAvatar) chkAvatar.addEventListener('change', e => { if(viewMode === 'tps' && avatarGroup) avatarGroup.visible = e.target.checked; });
             const chkMinimap = document.getElementById('chk-layer-minimap'); if(chkMinimap) chkMinimap.addEventListener('change', e => { showMinimap = e.target.checked; updatePanels(); });
 
-            // 실제 BLE 연동 및 시뮬레이션 폴백 (Fallback)
             const btnBle = document.getElementById('txt-ble-status');
             if(btnBle) {
                 btnBle.addEventListener('click', async () => {
-                    if (!navigator.bluetooth) { 
-                        notify("Web Bluetooth is not supported. Running Simulation.", "info"); 
-                        btnBle.textContent = "● SIMULATING"; 
-                        btnBle.className = "text-[10px] text-blue-600 dark:text-blue-500 bg-blue-100 dark:bg-blue-500/10 border border-blue-300 dark:border-blue-500/30 px-2 py-1 md:px-1.5 md:py-0.5 rounded cursor-pointer font-medium"; 
-                        return; 
-                    }
+                    if (!navigator.bluetooth) { notify("Web Bluetooth is not supported. Running Simulation.", "info"); btnBle.textContent = "● SIMULATING"; btnBle.className = "text-[10px] text-blue-600 dark:text-blue-500 bg-blue-100 dark:bg-blue-500/10 border border-blue-300 dark:border-blue-500/30 px-2 py-1 md:px-1.5 md:py-0.5 rounded cursor-pointer font-medium"; return; }
                     try {
                         const device = await navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] });
                         const server = await device.gatt.connect(); const service = await server.getPrimaryService('heart_rate');
@@ -976,12 +1183,7 @@
                             const bTxt = document.getElementById('txt-bpm'); if(bTxt) bTxt.textContent = currentBPM;
                         });
                         btnBle.textContent = "● CONNECTED"; notify(`Connected to ${device.name || 'BLE Device'}.`, "success");
-                    } catch(err) { 
-                        console.error(err); 
-                        notify("BLE connection failed. Running Simulation.", "error"); 
-                        btnBle.textContent = "● SIMULATING";
-                        btnBle.className = "text-[10px] text-blue-600 dark:text-blue-500 bg-blue-100 dark:bg-blue-500/10 border border-blue-300 dark:border-blue-500/30 px-2 py-1 md:px-1.5 md:py-0.5 rounded cursor-pointer font-medium";
-                    }
+                    } catch(err) { console.error(err); notify("BLE connection failed. Running Simulation.", "error"); btnBle.textContent = "● SIMULATING"; btnBle.className = "text-[10px] text-blue-600 dark:text-blue-500 bg-blue-100 dark:bg-blue-500/10 border border-blue-300 dark:border-blue-500/30 px-2 py-1 md:px-1.5 md:py-0.5 rounded cursor-pointer font-medium"; }
                 });
             }
 
@@ -997,7 +1199,6 @@
             const btnExpBot = document.getElementById('btn-export-gltf-bottom');
             if(btnExpBot) btnExpBot.addEventListener('click', bakeAndExportHeatmapGltf);
 
-            // ★ 새로 추가된 이메일 전송 트리거 ★
             const btnEmailData = document.getElementById('btn-email-data');
             if(btnEmailData) btnEmailData.addEventListener('click', () => {
                 const subj = encodeURIComponent("Architecture Viewer Export Data");
@@ -1008,6 +1209,8 @@
             
             const btnReset = document.getElementById('btn-reset-scene');
             if(btnReset) btnReset.addEventListener('click', () => { clearCurrentDemoScene(); buildOrganicPavilionScene(); setTimeout(resetView, 100); });
+            const btnLoadSample = document.getElementById('btn-load-sample');
+            if(btnLoadSample) btnLoadSample.addEventListener('click', loadSampleModel);
             const glbFileInput = document.getElementById('input-glb-upload'); const btnUpload = document.getElementById('btn-upload-stub');
             if(btnUpload && glbFileInput) { btnUpload.addEventListener('click', () => glbFileInput.click()); glbFileInput.addEventListener('change', handleGlbUpload); }
         }
@@ -1041,21 +1244,15 @@
                             if (node.material) {
                                 if (Array.isArray(node.material)) node.material.forEach(m => m.clippingPlanes = clipPlanes);
                                 else node.material.clippingPlanes = clipPlanes;
-                                
-                                const checkEmissive = (m) => {
-                                    if(m.emissive && m.emissive.getHex() > 0) modelEmissives.push(m);
-                                };
-                                if (Array.isArray(node.material)) node.material.forEach(checkEmissive);
-                                else checkEmissive(node.material);
+                                const checkEmissive = (m) => { if(m.emissive && m.emissive.getHex() > 0) modelEmissives.push(m); };
+                                if (Array.isArray(node.material)) node.material.forEach(checkEmissive); else checkEmissive(node.material);
                             }
                             structures.push(node);
                         }
                     });
                     scene.add(activeModelGroup);
                     setTransformMode('view', document.getElementById('btn-tool-view'));
-                    
                     updateSceneLayerUI(activeModelGroup);
-                    
                     setTimeout(resetView, 100); 
                     notify("Model Imported.", "success");
                 }, err => notify("Failed to decode GLB.", "error"));
@@ -1087,113 +1284,6 @@
             if (ecgCanvas) { ecgCtx = ecgCanvas.getContext('2d'); for (let i=0; i<ecgCanvas.width; i++) ecgPoints.push(ecgCanvas.height/2); }
         }
 
-        function bakeAndExportHeatmapGltf() {
-            if (!THREE.GLTFExporter) { notify("Exporter module loading.", "error"); return; }
-            if (gazePoints.length === 0) { notify("Insufficient Heatmap data.", "error"); return; }
-            notify("Baking vertex colors into Architecture...", "info");
-
-            const exportGroup = new THREE.Group();
-            structures.forEach((mesh) => {
-                const cloneMesh = mesh.clone(); let bakeGeom = mesh.geometry.clone();
-                if (bakeGeom.index) bakeGeom = bakeGeom.toNonIndexed();
-                const posAttr = bakeGeom.attributes.position; const colors = new Float32Array(posAttr.count * 3);
-                const wPos = new THREE.Vector3(); const wMat = mesh.matrixWorld;
-
-                for (let i = 0; i < posAttr.count; i++) {
-                    wPos.fromBufferAttribute(posAttr, i).applyMatrix4(wMat);
-                    let accW = 0, wStress = 0;
-                    gazePoints.forEach(pt => {
-                        const dist = wPos.distanceTo(new THREE.Vector3(pt.x, pt.y, pt.z));
-                        if (dist < 2.5) { const weight = Math.pow(1.0 - (dist/2.5), 2); accW += weight; wStress += pt.stress * weight; }
-                    });
-                    if (accW > 0) {
-                        const avg = wStress / accW;
-                        if (avg > 60) { const t = (avg-60)/40; colors[i*3]=1; colors[i*3+1]=0.7*(1-t)+0.1*t; colors[i*3+2]=0; }
-                        else if (avg > 20) { const t = (avg-20)/40; colors[i*3]=t; colors[i*3+1]=1-0.3*t; colors[i*3+2]=0.7*(1-t); }
-                        else { colors[i*3]=0; colors[i*3+1]=1; colors[i*3+2]=0.7; }
-                    } else { colors[i*3]=0.95; colors[i*3+1]=0.95; colors[i*3+2]=0.95; } 
-                }
-                bakeGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3)); cloneMesh.geometry = bakeGeom;
-                
-                if (cloneMesh.material) {
-                    if (Array.isArray(cloneMesh.material)) { cloneMesh.material = cloneMesh.material.map(m => { let cm = m.clone(); cm.vertexColors = true; return cm; }); } 
-                    else { cloneMesh.material = cloneMesh.material.clone(); cloneMesh.material.vertexColors = true; }
-                } else cloneMesh.material = new THREE.MeshStandardMaterial({ vertexColors: true });
-                exportGroup.add(cloneMesh);
-            });
-
-            new THREE.GLTFExporter().parse(exportGroup, gltf => {
-                const blob = new Blob([JSON.stringify(gltf)], { type: 'application/json' });
-                triggerEmailShare(URL.createObjectURL(blob), false);
-            }, err => notify("GLTF Export Error.", "error"), { binary: false });
-        }
-
-        function updateNavigationAndAvatar(delta) {
-            // ★ 카메라 회전에 보간(Lerp) 적용하여 매우 부드러운 관성 회전 달성 ★
-            cameraYaw = THREE.MathUtils.lerp(cameraYaw, targetYaw, delta * 15);
-            cameraPitch = THREE.MathUtils.lerp(cameraPitch, targetPitch, delta * 15);
-
-            let actualSpeed = moveSpeed * (keysPressed.shift ? 2.5 : 1);
-            const targetRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(cameraPitch, cameraYaw, 0, 'YXZ'));
-            const fVec = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), cameraYaw).normalize();
-            const rVec = new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0), cameraYaw).normalize();
-
-            let mDir = new THREE.Vector3();
-            if(keysPressed.w) mDir.add(fVec); if(keysPressed.s) mDir.add(fVec.clone().negate());
-            if(keysPressed.a) mDir.add(rVec.clone().negate()); if(keysPressed.d) mDir.add(rVec);
-            if(joyDelta.y !== 0) mDir.addScaledVector(fVec, -joyDelta.y);
-            if(joyDelta.x !== 0) mDir.addScaledVector(rVec, joyDelta.x);
-            if(movementMode === 'fly') { if(keysPressed.e) mDir.y += 1; if(keysPressed.q) mDir.y -= 1; }
-
-            // ★ 속도 벡터에도 관성(Momentum)을 부여하여 미끄러지듯 이동 ★
-            if (mDir.lengthSq() > 0) mDir.normalize();
-            targetVelocity.copy(mDir).multiplyScalar(actualSpeed * delta);
-            currentVelocity.lerp(targetVelocity, delta * 10);
-
-            const isMoving = currentVelocity.lengthSq() > 0.001;
-            if (isMoving && avatarGroup && currentTransformMode === 'view') {
-                avatarGroup.position.add(currentVelocity);
-            }
-            
-            // ★ 계단/경사로 자동 인식 (Stair-Climbing in Walk mode) ★
-            if (movementMode === 'walk' && avatarGroup) {
-                // 발끝에서 약간 높은 위치(1.0m)에서 아래로 레이캐스팅을 쏴 지형 높이를 계산
-                let targetY = 0; // 지면 기본값
-                const origin = new THREE.Vector3(avatarGroup.position.x, avatarGroup.position.y + 1.0, avatarGroup.position.z);
-                raycasterDown.set(origin, new THREE.Vector3(0, -1, 0));
-                
-                // 건물의 바닥, 계단, 지형 등에서 Y 값을 스캔
-                const intersects = raycasterDown.intersectObjects([...structures, groundMesh]);
-                if (intersects.length > 0) {
-                    targetY = intersects[0].point.y;
-                }
-                
-                // 도출된 지형 높이로 아바타를 부드럽게 끌어올리거나 내림 (계단 오르기)
-                avatarGroup.position.y = THREE.MathUtils.lerp(avatarGroup.position.y, targetY, 0.3); 
-            }
-
-            if (isMoving && avatarGroup && currentTransformMode === 'view' && (keysPressed.w||keysPressed.a||keysPressed.s||keysPressed.d || joyDelta.x !== 0 || joyDelta.y !== 0)) {
-                avatarGroup.rotation.y = THREE.MathUtils.lerp(avatarGroup.rotation.y, Math.atan2(mDir.x, mDir.z), 0.15);
-            }
-
-            if (viewMode === 'fps') {
-                camera.quaternion.copy(targetRot); 
-                if(avatarGroup) camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1.75, avatarGroup.position.z);
-            } else {
-                camera.quaternion.copy(targetRot);
-                if(avatarGroup) camera.position.lerp(avatarGroup.position.clone().add(new THREE.Vector3(0, 2.0, 4.0).applyQuaternion(targetRot)), 0.12); 
-            }
-
-            if (mixer && avatarGroup && viewMode !== 'fps') {
-                mixer.update(delta); 
-                let nextAction = idleAction;
-                if (isMoving && currentTransformMode === 'view') nextAction = keysPressed.shift ? runAction : walkAction;
-                if (nextAction !== currentAction && nextAction && currentAction) {
-                    currentAction.fadeOut(0.2); nextAction.reset().fadeIn(0.2).play(); currentAction = nextAction;
-                }
-            }
-        }
-
         function drawEcgPulse(delta) {
             if (!ecgCtx || !ecgCanvas) return;
             let baseLine = ecgCanvas.height / 2;
@@ -1211,7 +1301,7 @@
         function runSpatialBiometricSensing() {
             if (!avatarGroup) return;
             const sensorOrigin = new THREE.Vector3(avatarGroup.position.x, avatarGroup.position.y + 0.9, avatarGroup.position.z);
-            raycasterDown.set(sensorOrigin, new THREE.Vector3(0, 1, 0));
+            raycasterDown.set(sensorOrigin, new THREE.Vector3(0, -1, 0));
             const ceilInt = raycasterDown.intersectObjects(structures);
             let ceilHeight = ceilInt.length > 0 ? ceilInt[0].distance : 7.0; 
 
@@ -1270,6 +1360,128 @@
             gazePointCloud.geometry.setDrawRange(0, drawCount); posAttr.needsUpdate = true; colAttr.needsUpdate = true;
         }
 
+        function bakeAndExportHeatmapGltf() {
+            if (!THREE.GLTFExporter) { notify("Exporter module loading.", "error"); return; }
+            if (gazePoints.length === 0) { notify("Insufficient Heatmap data.", "error"); return; }
+            notify("Baking vertex colors into Architecture...", "info");
+
+            const exportGroup = new THREE.Group();
+            structures.forEach((mesh) => {
+                const cloneMesh = mesh.clone(); let bakeGeom = mesh.geometry.clone();
+                if (bakeGeom.index) bakeGeom = bakeGeom.toNonIndexed();
+                const posAttr = bakeGeom.attributes.position; const colors = new Float32Array(posAttr.count * 3);
+                const wPos = new THREE.Vector3(); const wMat = mesh.matrixWorld;
+
+                for (let i = 0; i < posAttr.count; i++) {
+                    wPos.fromBufferAttribute(posAttr, i).applyMatrix4(wMat);
+                    let accW = 0, wStress = 0;
+                    gazePoints.forEach(pt => {
+                        const dist = wPos.distanceTo(new THREE.Vector3(pt.x, pt.y, pt.z));
+                        if (dist < 2.5) { const weight = Math.pow(1.0 - (dist/2.5), 2); accW += weight; wStress += pt.stress * weight; }
+                    });
+                    if (accW > 0) {
+                        const avg = wStress / accW;
+                        if (avg > 60) { const t = (avg-60)/40; colors[i*3]=1; colors[i*3+1]=0.7*(1-t)+0.1*t; colors[i*3+2]=0; }
+                        else if (avg > 20) { const t = (avg-20)/40; colors[i*3]=t; colors[i*3+1]=1-0.3*t; colors[i*3+2]=0.7*(1-t); }
+                        else { colors[i*3]=0; colors[i*3+1]=1; colors[i*3+2]=0.7; }
+                    } else { colors[i*3]=0.95; colors[i*3+1]=0.95; colors[i*3+2]=0.95; } 
+                }
+                bakeGeom.setAttribute('color', new THREE.BufferAttribute(colors, 3)); cloneMesh.geometry = bakeGeom;
+                
+                if (cloneMesh.material) {
+                    if (Array.isArray(cloneMesh.material)) { cloneMesh.material = cloneMesh.material.map(m => { let cm = m.clone(); cm.vertexColors = true; return cm; }); } 
+                    else { cloneMesh.material = cloneMesh.material.clone(); cloneMesh.material.vertexColors = true; }
+                } else cloneMesh.material = new THREE.MeshStandardMaterial({ vertexColors: true });
+                exportGroup.add(cloneMesh);
+            });
+
+            new THREE.GLTFExporter().parse(exportGroup, gltf => {
+                const blob = new Blob([JSON.stringify(gltf)], { type: 'application/json' });
+                triggerEmailShare(URL.createObjectURL(blob), false);
+            }, err => notify("GLTF Export Error.", "error"), { binary: false });
+        }
+
+        function updateNavigationAndAvatar(delta) {
+            cameraYaw = THREE.MathUtils.lerp(cameraYaw, targetYaw, delta * 15);
+            cameraPitch = THREE.MathUtils.lerp(cameraPitch, targetPitch, delta * 15);
+
+            let actualSpeed = moveSpeed * (keysPressed.shift ? 2.5 : 1);
+            const targetRot = new THREE.Quaternion().setFromEuler(new THREE.Euler(cameraPitch, cameraYaw, 0, 'YXZ'));
+            const fVec = new THREE.Vector3(0,0,-1).applyAxisAngle(new THREE.Vector3(0,1,0), cameraYaw).normalize();
+            const rVec = new THREE.Vector3(1,0,0).applyAxisAngle(new THREE.Vector3(0,1,0), cameraYaw).normalize();
+
+            let mDir = new THREE.Vector3();
+            if(keysPressed.w) mDir.add(fVec); if(keysPressed.s) mDir.add(fVec.clone().negate());
+            if(keysPressed.a) mDir.add(rVec.clone().negate()); if(keysPressed.d) mDir.add(rVec);
+            
+            if(joyDelta.y !== 0) mDir.addScaledVector(fVec, -joyDelta.y);
+            if(joyDelta.x !== 0) mDir.addScaledVector(rVec, joyDelta.x);
+
+            if(movementMode === 'fly') { if(keysPressed.e) mDir.y += 1; if(keysPressed.q) mDir.y -= 1; }
+
+            if (mDir.lengthSq() > 0) mDir.normalize();
+            targetVelocity.copy(mDir).multiplyScalar(actualSpeed * delta);
+            currentVelocity.lerp(targetVelocity, delta * 10);
+
+            const isMoving = currentVelocity.lengthSq() > 0.001;
+            
+            // ★ 텔레포트 애니메이션 로직 ★
+            if (isTeleporting && avatarGroup) {
+                avatarGroup.position.lerp(teleportTarget, delta * 8.0);
+                if (avatarGroup.position.distanceTo(teleportTarget) < 0.1) { 
+                    isTeleporting = false;
+                    avatarGroup.position.copy(teleportTarget);
+                }
+            } else if (avatarGroup && currentTransformMode === 'view') {
+                if (isMoving) avatarGroup.position.add(currentVelocity);
+
+                if (movementMode === 'walk') {
+                    if (isJumping) {
+                        avatarGroup.position.y += yVelocity * delta;
+                        yVelocity += GRAVITY * delta; 
+                        if (avatarGroup.position.y <= groundY) {
+                            avatarGroup.position.y = groundY;
+                            isJumping = false; yVelocity = 0;
+                        }
+                    } else {
+                        const origin = new THREE.Vector3(avatarGroup.position.x, avatarGroup.position.y + 1.5, avatarGroup.position.z);
+                        raycasterDown.set(origin, new THREE.Vector3(0, -1, 0));
+                        const intersects = raycasterDown.intersectObjects([...structures, groundMesh]);
+                        groundY = intersects.length > 0 ? intersects[0].point.y : 0;
+                        avatarGroup.position.y = THREE.MathUtils.lerp(avatarGroup.position.y, groundY, 0.3); 
+                    }
+                }
+                
+                if (isMoving && !isJumping && (keysPressed.w||keysPressed.a||keysPressed.s||keysPressed.d || joyDelta.x !== 0 || joyDelta.y !== 0)) {
+                    avatarGroup.rotation.y = THREE.MathUtils.lerp(avatarGroup.rotation.y, Math.atan2(mDir.x, mDir.z), 0.15);
+                }
+            }
+
+            if (viewMode === 'fps') {
+                camera.quaternion.copy(targetRot); 
+                if(avatarGroup) camera.position.set(avatarGroup.position.x, avatarGroup.position.y + 1.75, avatarGroup.position.z);
+            } else {
+                camera.quaternion.copy(targetRot);
+                if(avatarGroup) camera.position.lerp(avatarGroup.position.clone().add(new THREE.Vector3(0, 2.0, 4.0).applyQuaternion(targetRot)), 0.12); 
+            }
+
+            if (mixer && avatarGroup && viewMode !== 'fps') {
+                mixer.update(delta); 
+                let nextAction = idleAction; window.currentActionName = 'idle';
+                if (isMoving && currentTransformMode === 'view' && !isJumping && !isTeleporting) {
+                    nextAction = keysPressed.shift ? runAction : walkAction;
+                    window.currentActionName = keysPressed.shift ? 'run' : 'walk';
+                } else if (isJumping || isTeleporting) {
+                    nextAction = idleAction; 
+                    window.currentActionName = 'jump';
+                }
+                
+                if (nextAction !== currentAction && nextAction && currentAction) {
+                    currentAction.fadeOut(0.2); nextAction.reset().fadeIn(0.2).play(); currentAction = nextAction;
+                }
+            }
+        }
+
         function onWindowResize() { 
             camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); 
             renderer.setSize(window.innerWidth, window.innerHeight); 
@@ -1281,11 +1493,11 @@
             
             updateNavigationAndAvatar(delta);
             runSpatialBiometricSensing();
-            if(frameCount % 6 === 0) performGazeEyeTracking();
+            if(frameCount % 6 === 0 && typeof performGazeEyeTracking === 'function') performGazeEyeTracking();
             drawEcgPulse(delta);
             
             const elPos = document.getElementById('txt-pos');
-            if(elPos && avatarGroup) elPos.textContent = `${avatarGroup.position.x.toFixed(0)}, ${avatarGroup.position.y.toFixed(0)}, ${avatarGroup.position.z.toFixed(0)}`;
+            if(elPos && avatarGroup) elPos.textContent = `${avatarGroup.position.x.toFixed(1)}, ${avatarGroup.position.y.toFixed(1)}, ${avatarGroup.position.z.toFixed(1)}`;
             frameCount++; const time = clock.getElapsedTime();
             if (time - lastFpsUpdate > 1.0) {
                 const fpsTxt = document.getElementById('txt-fps');
