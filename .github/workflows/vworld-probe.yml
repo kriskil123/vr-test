@@ -6,7 +6,7 @@ jobs:
   inspect:
     if: github.event.repository.private == false
     runs-on: ubuntu-24.04
-    timeout-minutes: 8
+    timeout-minutes: 20
     steps:
       - name: Install browser
         run: |
@@ -27,11 +27,19 @@ jobs:
           report = {"sdk_statuses": [], "scene_ready": False}
           url = "https://kilmap-mobile-study.kris335217.chatgpt.site/?map=vworld&capture=1"
 
+          def save_status():
+              (out / "status.json").write_text(
+                  json.dumps(report, indent=2), encoding="utf-8"
+              )
+
           def observe(response):
               u = urlsplit(response.url)
               if u.hostname == "map.vworld.kr" and u.path.endswith("/webglMapInit.js.do"):
                   report["sdk_statuses"].append(response.status)
+                  save_status()
+                  print("VWorld SDK HTTP", response.status, flush=True)
 
+          save_status()
           try:
               with sync_playwright() as pw:
                   browser = pw.chromium.launch(args=[
@@ -41,33 +49,46 @@ jobs:
                   page = browser.new_page(viewport={"width": 1280, "height": 800})
                   page.on("response", observe)
                   try:
-                      response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                      response = page.goto(
+                          url, wait_until="domcontentloaded", timeout=45000
+                      )
                       report["viewer_http"] = response.status if response else None
+                      save_status()
                       deadline = time.monotonic() + 75
+
                       while time.monotonic() < deadline:
                           codes = report["sdk_statuses"]
                           if codes and codes[-1] >= 400:
                               break
+
                           ready = page.evaluate("""() => {
-                            const f = document.querySelector('#stage.provider-ui iframe:not([hidden])');
+                            const f = document.querySelector(
+                              '#stage.provider-ui iframe:not([hidden])'
+                            );
                             const scene = f?.contentWindow?.ws3d?.viewer?.scene;
-                            return Boolean(scene?.globe && f.dataset.cameraConfirmed &&
+                            return Boolean(
+                              scene?.globe &&
+                              f.dataset.cameraConfirmed &&
                               f.dataset.groundAnchor &&
-                              !f.contentDocument?.querySelector('.cesium-widget-errorPanel'));
+                              !f.contentDocument?.querySelector('.cesium-widget-errorPanel')
+                            );
                           }""")
+
                           if ready and 200 in codes:
                               page.wait_for_timeout(2000)
                               report["scene_ready"] = True
                               break
                           page.wait_for_timeout(300)
                   finally:
+                      save_status()
                       page.screenshot(path=str(out / "screen.png"), timeout=10000)
                       browser.close()
           except Exception as exc:
               report["exception_type"] = type(exc).__name__
           finally:
-              (out / "status.json").write_text(json.dumps(report, indent=2))
-              print(json.dumps(report))
+              save_status()
+              print(json.dumps(report), flush=True)
+
           raise SystemExit(0 if report["scene_ready"] else 1)
 
       - name: Save screenshot and status
