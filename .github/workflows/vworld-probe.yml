@@ -1,0 +1,79 @@
+name: VWorld cloud connection test
+on: workflow_dispatch
+permissions: {}
+
+jobs:
+  inspect:
+    if: github.event.repository.private == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Install browser
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+
+      - name: Open KILMAP and capture VWorld
+        shell: python
+        run: |
+          import json
+          import time
+          from pathlib import Path
+          from urllib.parse import urlsplit
+          from playwright.sync_api import sync_playwright
+
+          out = Path("probe-result")
+          out.mkdir(exist_ok=True)
+          report = {"sdk_statuses": [], "scene_ready": False}
+          url = "https://kilmap-mobile-study.kris335217.chatgpt.site/?map=vworld&capture=1"
+
+          def observe(response):
+              u = urlsplit(response.url)
+              if u.hostname == "map.vworld.kr" and u.path.endswith("/webglMapInit.js.do"):
+                  report["sdk_statuses"].append(response.status)
+
+          try:
+              with sync_playwright() as pw:
+                  browser = pw.chromium.launch(args=[
+                      "--use-angle=swiftshader",
+                      "--enable-unsafe-swiftshader"
+                  ])
+                  page = browser.new_page(viewport={"width": 1280, "height": 800})
+                  page.on("response", observe)
+                  try:
+                      response = page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                      report["viewer_http"] = response.status if response else None
+                      deadline = time.monotonic() + 75
+                      while time.monotonic() < deadline:
+                          codes = report["sdk_statuses"]
+                          if codes and codes[-1] >= 400:
+                              break
+                          ready = page.evaluate("""() => {
+                            const f = document.querySelector('#stage.provider-ui iframe:not([hidden])');
+                            const scene = f?.contentWindow?.ws3d?.viewer?.scene;
+                            return Boolean(scene?.globe && f.dataset.cameraConfirmed &&
+                              f.dataset.groundAnchor &&
+                              !f.contentDocument?.querySelector('.cesium-widget-errorPanel'));
+                          }""")
+                          if ready and 200 in codes:
+                              page.wait_for_timeout(2000)
+                              report["scene_ready"] = True
+                              break
+                          page.wait_for_timeout(300)
+                  finally:
+                      page.screenshot(path=str(out / "screen.png"), timeout=10000)
+                      browser.close()
+          except Exception as exc:
+              report["exception_type"] = type(exc).__name__
+          finally:
+              (out / "status.json").write_text(json.dumps(report, indent=2))
+              print(json.dumps(report))
+          raise SystemExit(0 if report["scene_ready"] else 1)
+
+      - name: Save screenshot and status
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vworld-network-check
+          path: probe-result/
+          retention-days: 1
